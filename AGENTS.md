@@ -15,8 +15,12 @@ Decided: license is **MPL 2.0** for the whole repo; contributions use a DCO
 sign-off (`git commit -s`); every source file carries
 `SPDX-License-Identifier: MPL-2.0` (rationale: issue #5).
 
-Open decisions (ask, don't assume): PHP version floor, storage per module
-(flat files vs SQLite), test framework.
+Decided: PHP floor is **8.3**, raised when a branch leaves php.net security
+support; every PHP file uses `declare(strict_types=1)`; only always-enabled
+extensions may be required (rationale: issue #8).
+
+Open decisions (ask, don't assume): storage per module (flat files vs
+SQLite), test framework.
 
 ## What Innesto is
 
