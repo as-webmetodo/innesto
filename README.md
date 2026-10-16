@@ -82,4 +82,4 @@ Contributions, ideas, real-world use cases, and developer feedback are very welc
 
 ## 📄 License
 
-Distributed under an Open Source license *(to be defined: MIT / GPL / MPL)*.
+Distributed under the [Mozilla Public License 2.0](LICENSE). Changes to Innesto's own files stay open source; your own Modules, templates written from scratch and the sites you build with Innesto can be licensed however you like.
