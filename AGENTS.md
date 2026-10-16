@@ -63,8 +63,8 @@ Ask which naming is canonical before using either in specs or code.
 ## Git
 
 Remote: `as-webmetodo:as-webmetodo/innesto.git` (SSH alias for the work
-account). The branch flow (direct to `main` vs feature branches) has not been
-decided: ask before each commit.
+account). Branch flow: commit directly to `main` (decided 2026-10-16). Never
+push; pushing is the maintainer's action.
 
 ## Agent skills
 
