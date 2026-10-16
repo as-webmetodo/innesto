@@ -6,7 +6,7 @@ Guidance for AI coding agents working in this repository.
 
 Innesto is in the **concept & architectural design** phase. There is no code,
 build system, test suite, or linter yet, and no commits. The only source of
-truth is the project brief `🌱 Innesto.md`. Until code exists, work here is
+truth is the project brief `README.md`. Until code exists, work here is
 specs and design documents, not implementation; do not invent commands or
 stack choices — confirm them with the user and record them in this file once
 decided.
@@ -49,7 +49,7 @@ Cross-cutting conventions every module must honour:
 - **Non-intrusive styling**: semantic HTML, CSS custom properties, optional
   utility-class mapping, full template overrides.
 
-## Known inconsistency in the brief
+## Known inconsistency in the brief (README.md)
 
 The "Project Status" section names the first packages *Mail / Book / Hours*,
 while the ecosystem section names them `in.modulo` / `in.agenda` / `in.hours`.
@@ -62,6 +62,6 @@ Ask which naming is canonical before using either in specs or code.
 
 ## Git
 
-Repository has no remote and no commits yet; the branch flow (direct to `main`
-vs feature branches) has not been decided. Ask before the first commit and
-record the answer here.
+Remote: `as-webmetodo:as-webmetodo/innesto.git` (SSH alias for the work
+account). The branch flow (direct to `main` vs feature branches) has not been
+decided: ask before each commit.
