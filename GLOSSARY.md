@@ -25,6 +25,14 @@ A Module's human-facing name, always "Innesto" followed by an Italian word (e.g.
 The website Innesto is grafted onto, usually static; served from Roots' own origin by default, or from another origin.
 _Avoid_: Frontend, host page
 
+**View**:
+One way a Module presents its content in a Site (e.g. the week's hours, the Status line alone), available on every integration surface.
+_Avoid_: Widget, block, component
+
+**Embed**:
+A place in the Site where the Developer inserts a View of a Module, together with its options (e.g. Schedule, locale).
+_Avoid_: Snippet, shortcode, placement
+
 **Data directory**:
 The single location on the server where an install keeps all its data, outside the webroot whenever the host allows.
 _Avoid_: Storage folder, var
