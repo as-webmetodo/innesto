@@ -21,6 +21,24 @@ _Avoid_: Slug, module key
 **Display name**:
 A Module's human-facing name, always "Innesto" followed by an Italian word (e.g. Innesto Orario).
 
+**Site**:
+The website Innesto is grafted onto, usually static; served from Roots' own origin by default, or from another origin.
+_Avoid_: Frontend, host page
+
+### People
+
+**Developer**:
+The web professional who installs Innesto Roots, configures Modules and embeds them in the Site.
+_Avoid_: Admin, webmaster
+
+**Client**:
+The business owner the Site belongs to, who manages day-to-day content (e.g. closures) without touching the Site's code.
+_Avoid_: Customer, user, owner
+
+**Visitor**:
+An anonymous person browsing the Site; never authenticated to Roots.
+_Avoid_: User, guest
+
 ### Modules
 
 **Innesto Modulo** (`in.modulo`):
