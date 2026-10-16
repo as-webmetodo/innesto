@@ -11,8 +11,12 @@ specs and design documents, not implementation; do not invent commands or
 stack choices — confirm them with the user and record them in this file once
 decided.
 
-Open decisions (ask, don't assume): license (MIT / GPL / MPL), PHP version
-floor, storage per module (flat files vs SQLite), test framework.
+Decided: license is **MPL 2.0** for the whole repo; contributions use a DCO
+sign-off (`git commit -s`); every source file carries
+`SPDX-License-Identifier: MPL-2.0` (rationale: issue #5).
+
+Open decisions (ask, don't assume): PHP version floor, storage per module
+(flat files vs SQLite), test framework.
 
 ## What Innesto is
 
