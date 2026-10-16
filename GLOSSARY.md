@@ -108,3 +108,11 @@ _Avoid_: Extraordinary hours, holiday hours
 **Schedule timezone**:
 The timezone whose local wall-clock time all of a Schedule's times are expressed in.
 _Avoid_: Visitor timezone
+
+**Status**:
+Whether a Schedule is open or closed at a given moment, as a Visitor sees it.
+_Avoid_: Open now, state
+
+**Status timeline**:
+The sequence of a Schedule's upcoming Statuses over a limited horizon, each with the text shown to Visitors while it lasts.
+_Avoid_: Forecast, calendar
