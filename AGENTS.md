@@ -19,8 +19,11 @@ Decided: PHP floor is **8.3**, raised when a branch leaves php.net security
 support; every PHP file uses `declare(strict_types=1)`; only always-enabled
 extensions may be required (rationale: issue #8).
 
-Open decisions (ask, don't assume): storage per module (flat files vs
-SQLite), test framework.
+Decided: storage uses SQLite where available and safe, guarded flat files
+otherwise, behind one Roots storage API; one Store per Module
+(rationale: issue #9).
+
+Open decisions (ask, don't assume): test framework.
 
 ## What Innesto is
 

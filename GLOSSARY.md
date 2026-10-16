@@ -25,6 +25,14 @@ A Module's human-facing name, always "Innesto" followed by an Italian word (e.g.
 The website Innesto is grafted onto, usually static; served from Roots' own origin by default, or from another origin.
 _Avoid_: Frontend, host page
 
+**Data directory**:
+The single location on the server where an install keeps all its data, outside the webroot whenever the host allows.
+_Avoid_: Storage folder, var
+
+**Store**:
+The private storage space of Innesto Roots or of one Module, reachable only by its owner.
+_Avoid_: Database, data file
+
 ### People
 
 **Developer**:
