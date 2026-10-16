@@ -5,8 +5,9 @@ Guidance for AI coding agents working in this repository.
 ## Project status
 
 Innesto is in the **concept & architectural design** phase. There is no code,
-build system, test suite, or linter yet, and no commits. The only source of
-truth is the project brief `README.md`. Until code exists, work here is
+build system, test suite, or linter yet. Sources of truth: the brief
+`README.md`, `GLOSSARY.md`, `docs/adr/`, and the wayfinder map (GitHub issue
+#1) whose closed tickets hold each design decision. Until code exists, work here is
 specs and design documents, not implementation; do not invent commands or
 stack choices — confirm them with the user and record them in this file once
 decided.
