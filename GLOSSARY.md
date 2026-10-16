@@ -34,3 +34,37 @@ _Avoid_: Book, calendar module
 **Innesto Orario** (`in.hours`):
 The opening hours Module.
 _Avoid_: Hours (as a display name), `in.orario`
+
+### Opening hours (Innesto Orario)
+
+**Schedule**:
+A named, independent set of opening hours for one place or service (e.g. "Kitchen", "Via Roma shop"); an install may hold several.
+_Avoid_: Timetable, calendar, hours set
+
+**Opening period**:
+A single span of time during which a Schedule is open, belonging to the day it starts even when it ends after midnight.
+_Avoid_: Shift, slot, time range
+
+**Weekly hours**:
+The regular Opening periods of a Schedule for each weekday; a weekday without periods is closed.
+_Avoid_: Default hours, standard hours
+
+**Season**:
+An alternative set of Weekly hours that applies over a date span, optionally repeating every year (e.g. summer hours).
+_Avoid_: Period, summer schedule
+
+**Exception**:
+A date span whose hours replace the Schedule's hours entirely for those dates, optionally repeating every year.
+_Avoid_: Override, holiday
+
+**Closure**:
+An Exception with no Opening periods; it may have no end date ("closed until further notice").
+_Avoid_: Holiday, day off
+
+**Special hours**:
+An Exception with Opening periods that differ from the usual ones.
+_Avoid_: Extraordinary hours, holiday hours
+
+**Schedule timezone**:
+The timezone whose local wall-clock time all of a Schedule's times are expressed in.
+_Avoid_: Visitor timezone
