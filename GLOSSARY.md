@@ -33,6 +33,20 @@ _Avoid_: Storage folder, var
 The private storage space of Innesto Roots or of one Module, reachable only by its owner.
 _Avoid_: Database, data file
 
+### Language and locale
+
+**Default locale**:
+The locale a Site's public output uses unless an embed asks for another enabled locale.
+_Avoid_: Site language, main language
+
+**Enabled locales**:
+The locales the Developer has switched on for an install; public output is only ever produced in one of them.
+_Avoid_: Supported languages, active languages
+
+**Localised text**:
+Free text typed by a Developer or Client for Visitors to read, kept once per Enabled locale and falling back to the Default locale's version.
+_Avoid_: Translation, multilingual field
+
 ### People
 
 **Developer**:
