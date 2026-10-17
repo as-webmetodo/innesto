@@ -147,6 +147,10 @@ _Avoid_: Hours (as a display name), `in.orario`
 A named, independent set of opening hours for one place or service (e.g. "Kitchen", "Via Roma shop"); an install may hold several.
 _Avoid_: Timetable, calendar, hours set
 
+**Schedule key**:
+A Schedule's short, readable identifier, unique within the install and fixed when the Schedule is created, by which Embeds refer to it.
+_Avoid_: Schedule id, slug, schedule name
+
 **Opening period**:
 A single span of time during which a Schedule is open, belonging to the day it starts even when it ends after midnight.
 _Avoid_: Shift, slot, time range
