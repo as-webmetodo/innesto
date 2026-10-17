@@ -69,6 +69,10 @@ _Avoid_: Widget, block, component
 A place in the Site where the Developer inserts a View of a Module, together with its options (e.g. Schedule, locale).
 _Avoid_: Snippet, shortcode, placement
 
+**Embed code**:
+The markup Roots generates for the Developer to paste at an Embed, carrying a fallback line that can never show outdated content.
+_Avoid_: Snippet, embed snippet, widget code
+
 **Data directory**:
 The single location on the server where an install keeps all its data, outside the webroot whenever the host allows.
 _Avoid_: Storage folder, var
