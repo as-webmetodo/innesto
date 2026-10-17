@@ -97,6 +97,18 @@ _Avoid_: Shared config, private config, secrets
 The timezone chosen for the install at setup, used only as the starting Schedule timezone for new Schedules.
 _Avoid_: Site timezone, default timezone, server timezone
 
+**Self-check**:
+Roots' examination of the hosting environment an install runs on, grading each finding Fail, Warn or OK; a Fail blocks setup.
+_Avoid_: Health check, diagnostics, requirements check
+
+**Health Screen**:
+The Developer area Screen showing the latest Self-check, recent errors per Module, sign-in failures and the Roots log.
+_Avoid_: Status page, dashboard, diagnostics page
+
+**Roots log**:
+The install's own bounded record of errors, security events and changes made by the Developer or Client, readable from the Health Screen.
+_Avoid_: Error log, audit log, debug log
+
 ### Language and locale
 
 **Default locale**:
