@@ -73,6 +73,22 @@ _Avoid_: Snippet, shortcode, placement
 The markup Roots generates for the Developer to paste at an Embed, carrying a fallback line that can never show outdated content.
 _Avoid_: Snippet, embed snippet, widget code
 
+**Default stylesheet**:
+The optional stylesheet a Module ships for its Views, which any rule of the Developer's own outranks.
+_Avoid_: Theme, skin, base CSS
+
+**Template override**:
+A Developer-supplied file that replaces one of a Module's template files for that install.
+_Avoid_: Override (alone), custom template, theme
+
+**Catalogue override**:
+A Developer-supplied translation catalogue that adds a locale to a Module or replaces some of its strings for that install.
+_Avoid_: Override (alone), custom translation
+
+**Class map**:
+The Developer's list, per View, of extra classes to add to the parts of a Module's own markup (e.g. a utility framework's classes).
+_Avoid_: Utility mapping, class override
+
 **Data directory**:
 The single location on the server where an install keeps all its data, outside the webroot whenever the host allows.
 _Avoid_: Storage folder, var
