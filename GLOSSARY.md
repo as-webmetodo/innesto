@@ -15,11 +15,35 @@ A vertical micro-tool installed into Innesto Roots, delivering one dynamic featu
 _Avoid_: Package, plugin, extension
 
 **Package id**:
-A Module's machine identifier, namespaced `in.<name>` (e.g. `in.hours`), used in code, URLs and configuration.
+A Module's machine identifier, used in code, URLs and configuration: `in.<name>` for official Modules (e.g. `in.hours`), `<vendor>.<name>` for third-party ones.
 _Avoid_: Slug, module key
 
 **Display name**:
-A Module's human-facing name, always "Innesto" followed by an Italian word (e.g. Innesto Orario).
+A Module's human-facing name; for official Modules, always "Innesto" followed by an Italian word (e.g. Innesto Orario).
+
+**Manifest**:
+The declaration a Module ships so Roots can list, check and activate it without running its code.
+_Avoid_: Descriptor, module.json
+
+**Uploaded**:
+The state of a Module whose files are on the server but which has never been activated, and so has no Store.
+_Avoid_: Available, installed
+
+**Active**:
+The state of a Module that is running: its Views, Screens and Store are in use.
+_Avoid_: Enabled, installed
+
+**Inactive**:
+The state of a Module the Developer has deactivated; nothing of it runs, but its Store is kept.
+_Avoid_: Disabled, uninstalled
+
+**Halted**:
+The condition of a Module that Roots refuses to run (broken Manifest, unmet requirement, Store version mismatch), whatever its state.
+_Avoid_: Broken, failing, error state
+
+**Screen**:
+A page a Module contributes to the Developer area or the Client PWA, inside Roots' own frame.
+_Avoid_: Admin page, panel, settings page
 
 **Site**:
 The website Innesto is grafted onto, usually static; served from Roots' own origin by default, or from another origin.
