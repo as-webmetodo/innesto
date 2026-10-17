@@ -53,6 +53,10 @@ _Avoid_: Admin, backend, dashboard
 The phone-first app on Roots' origin where the Client manages day-to-day content through client Screens only.
 _Avoid_: Client panel, mobile app, client area
 
+**Launcher**:
+The Client PWA's home, owned by Roots: one tile per entry a Module contributes (e.g. one per Schedule), each with a live summary, opening that entry's client Screens.
+_Avoid_: Dashboard, home page, menu
+
 **Site**:
 The website Innesto is grafted onto, usually static; served from Roots' own origin by default, or from another origin.
 _Avoid_: Frontend, host page
