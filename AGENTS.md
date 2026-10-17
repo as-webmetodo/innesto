@@ -24,7 +24,11 @@ Decided: storage uses SQLite where available and safe, guarded flat files
 otherwise, behind one Roots storage API; one Store per Module
 (rationale: issue #9).
 
-Open decisions (ask, don't assume): test framework.
+Decided: tests use **Pest** (PHP), **Vitest** in browser mode and
+**Playwright** (JS, end-to-end against an Apache+PHP container), and
+**PHPStan** at max level; Composer and npm are dev-only, never shipped or run
+on the host; tests live beside their owner (`modules/<id>/tests/`); CI is
+GitHub Actions (rationale: issue #16).
 
 ## What Innesto is
 
