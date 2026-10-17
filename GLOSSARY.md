@@ -81,6 +81,10 @@ _Avoid_: Storage folder, var
 The private storage space of Innesto Roots or of one Module, reachable only by its owner.
 _Avoid_: Database, data file
 
+**Business profile**:
+The facts that identify the Client's business to the outside world (name, kind of business, address, phone, web address), kept once per install and shared by every Module.
+_Avoid_: Business identity, company info, NAP
+
 ### Language and locale
 
 **Default locale**:
@@ -166,6 +170,10 @@ _Avoid_: Holiday, day off
 **Special hours**:
 An Exception with Opening periods that differ from the usual ones.
 _Avoid_: Extraordinary hours, holiday hours
+
+**Location**:
+A Schedule that stands for a separate physical place of the business, with its own name, address and phone instead of the Business profile's.
+_Avoid_: Branch, store, premises, site
 
 **Schedule timezone**:
 The timezone whose local wall-clock time all of a Schedule's times are expressed in.
