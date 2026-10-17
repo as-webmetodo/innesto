@@ -85,6 +85,18 @@ _Avoid_: Database, data file
 The facts that identify the Client's business to the outside world (name, kind of business, address, phone, web address), kept once per install and shared by every Module.
 _Avoid_: Business identity, company info, NAP
 
+**Shared config**:
+The install-wide settings every Module may read but none may change (e.g. the Business profile, locales, the Install timezone, the Site's address), edited by the Developer.
+_Avoid_: Global config, Roots config, settings
+
+**Roots settings**:
+The install-wide settings only Innesto Roots reads (credentials, mail delivery, allowed origins, caching), never exposed to Modules.
+_Avoid_: Shared config, private config, secrets
+
+**Install timezone**:
+The timezone chosen for the install at setup, used only as the starting Schedule timezone for new Schedules.
+_Avoid_: Site timezone, default timezone, server timezone
+
 ### Language and locale
 
 **Default locale**:
