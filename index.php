@@ -4,5 +4,6 @@
 
 declare(strict_types=1);
 
-// Stub entry point from the scaffolding (#25); the front controller replaces it.
-echo 'Innesto Roots';
+require __DIR__ . '/src/bootstrap.php';
+
+Innesto\Roots\App::run('index');

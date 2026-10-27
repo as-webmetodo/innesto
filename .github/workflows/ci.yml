@@ -90,6 +90,6 @@ jobs:
       - name: Only shipped files are in the archive
         run: |
           git archive --prefix=innesto/ HEAD | tar -t > release.txt
-          allowed='^innesto/((index|view|asset|embed|data-path)\.php|(dev|app|src|templates|locales|assets|overrides)/.*|modules/([^/]+/((module\.php|(src|templates|locales|assets)/.*))?)?|LICENSE|README\.md)?$'
+          allowed='^innesto/((index|view|asset|embed|data-path)\.php|(dev|app|src|templates|locales|assets|overrides)/.*|modules/(\.htaccess|[^/]+/((module\.php|(src|templates|locales|assets)/.*))?)?|LICENSE|README\.md)?$'
           grep -vE "$allowed" release.txt > unexpected.txt || [ $? -eq 1 ]
           if [ -s unexpected.txt ]; then cat unexpected.txt; exit 1; fi

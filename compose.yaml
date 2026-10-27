@@ -5,7 +5,8 @@ x-web: &web
   ports:
     - "8080:80"
   volumes:
-    - .:/var/www/html/innesto:ro
+    - .:/src:ro
+  command: ["/src/docker/serve.sh"]
 
 services:
   web:
@@ -26,8 +27,10 @@ services:
     <<: *web
     profiles: [no-htaccess]
     image: php:${PHP_VERSION:-8.3}-apache
+    environment:
+      INNESTO_DATA_OUTSIDE: "0"
     volumes:
-      - .:/var/www/html/innesto:ro
+      - .:/src:ro
       - ./docker/no-htaccess.conf:/etc/apache2/conf-enabled/zz-no-htaccess.conf:ro
 
   cli:

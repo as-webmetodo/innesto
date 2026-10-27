@@ -1,0 +1,2 @@
+# Roots reads these files from PHP; nothing here is served over HTTP.
+Require all denied

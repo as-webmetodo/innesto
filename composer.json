@@ -17,8 +17,12 @@
         }
     },
     "autoload-dev": {
+        "psr-4": {
+            "Innesto\\Tests\\": "tests/Support/"
+        },
         "files": [
-            "tests/Support/source-headers.php"
+            "tests/Support/source-headers.php",
+            "tests/Support/roots.php"
         ]
     },
     "config": {
