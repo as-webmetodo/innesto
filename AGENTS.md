@@ -30,6 +30,22 @@ Decided: tests use **Pest** (PHP), **Vitest** in browser mode and
 on the host; tests live beside their owner (`modules/<id>/tests/`); CI is
 GitHub Actions (rationale: issue #16).
 
+Decided (2026-10-27, issue #25): **Pest 4** (not 5, which needs PHP 8.4),
+**PHPStan 2.3**, **Vitest 5** with `@vitest/browser-playwright`,
+**Playwright 1.64**, browsers **Chromium and WebKit**, **Node 26** pinned in
+`.nvmrc`; constraints are caret on the minor and both lock files are
+committed. CI runs Pest and PHPStan through `shivammathur/setup-php` on PHP
+8.3, 8.4 and 8.5, and Playwright against the container on the same matrix.
+The container is the official `php:<version>-apache` image, orchestrated by
+`compose.yaml` (Docker or Podman); the no-optional-extensions job uses our own
+image with PHP 8.3 built from source with `--disable-all`, because the
+official image compiles in `pdo_sqlite`, `mbstring`, `openssl` and `curl`; the
+`.htaccess`-ignored job mounts an `AllowOverride None` Apache config. Commands:
+`composer test` (Pest, including `arch()`, `strict_types` and SPDX checks),
+`composer analyse` (PHPStan), `npm run test:browser` (Vitest),
+`npm run test:e2e` (Playwright, starts the container), and `composer check` /
+`npm test` to run each side in full.
+
 ## What Innesto is
 
 A suite of dynamic micro-modules for static sites, deployed on cheap **shared
