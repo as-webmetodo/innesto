@@ -120,6 +120,7 @@ test('put rejects a document whose declared field is null, missing or mistyped',
     'missing' => [['id' => 'main']],
     'mistyped' => [['id' => 'main', 'position' => '1']],
     'without id' => [['position' => 1]],
+    'empty id' => [['id' => '', 'position' => 1]],
 ]);
 
 test('list rejects undeclared fields and unknown operators', function (string $backend): void {
@@ -128,8 +129,20 @@ test('list rejects undeclared fields and unknown operators', function (string $b
     expect(fn () => $store->list('schedules', [['name', '=', 'x']]))->toThrow(InvalidArgumentException::class)
         ->and(fn () => $store->list('schedules', [['position', '= 1 OR 1 =', 1]]))->toThrow(InvalidArgumentException::class)
         ->and(fn () => $store->list('schedules', orderBy: 'name'))->toThrow(InvalidArgumentException::class)
-        ->and(fn () => $store->list('unknown'))->toThrow(InvalidArgumentException::class);
+        ->and(fn () => $store->list('unknown'))->toThrow(InvalidArgumentException::class)
+        ->and(fn () => $store->list('schedules', limit: -1))->toThrow(InvalidArgumentException::class);
 })->with('backends');
+
+test('a schema with a name unfit for SQL is rejected before anything is written', function (string $backend, array $collections): void {
+    /** @var array<string, array{fields: array<string, 'int'|'string'>}> $collections */
+    $path = storePath();
+
+    expect(fn () => openStore($backend, $path, ['schema' => 1, 'collections' => $collections]))->toThrow(InvalidArgumentException::class)
+        ->and(glob(dirname($path) . '/*'))->toBe([]);
+})->with('backends')->with([
+    'collection' => [['bad"name' => ['fields' => []]]],
+    'field' => [['notes' => ['fields' => ['Bad Field' => 'int']]]],
+]);
 
 test('a transaction commits every write together', function (string $backend): void {
     $path = storePath();
@@ -191,6 +204,17 @@ test('the revision is bumped once per committed write transaction', function (st
         ->and(openStore($backend, $path)->revision())->toBe(2);
 })->with('backends');
 
+test('a write that changes nothing does not bump the revision', function (string $backend): void {
+    $store = openStore($backend, storePath());
+    $store->put('schedules', ['id' => 'a', 'position' => 1, 'name' => ['it' => 'Negozio']]);
+
+    $store->put('schedules', ['id' => 'a', 'position' => 1, 'name' => ['it' => 'Negozio']]);
+    $store->delete('schedules', 'missing');
+    $store->transaction(fn () => $store->put('schedules', ['id' => 'a', 'position' => 1, 'name' => ['it' => 'Negozio']]));
+
+    expect($store->revision())->toBe(1);
+})->with('backends');
+
 test('the Store keeps the schema version it was created with', function (string $backend): void {
     $path = storePath();
     expect(openStore($backend, $path)->schemaVersion())->toBe(3);
@@ -216,6 +240,13 @@ test('a reopened Store keeps the collections and fields it was created with', fu
         ->and(fn () => $reopened->list('notes'))->toThrow(InvalidArgumentException::class)
         ->and(fn () => $reopened->list('schedules', orderBy: 'name'))->toThrow(InvalidArgumentException::class);
 })->with('backends');
+
+test('a Store file without its guard is refused', function (): void {
+    $path = storePath();
+    file_put_contents("$path.php", '{"schema":1,"declared":{},"revision":0,"collections":{}}');
+
+    expect(fn () => openStore('files', $path))->toThrow(RuntimeException::class);
+});
 
 test('the guarded Store file prints nothing when requested directly', function (): void {
     $path = storePath();

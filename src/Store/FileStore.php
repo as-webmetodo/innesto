@@ -56,7 +56,7 @@ final class FileStore implements Store
 
     public function get(string $collection, string $id): ?array
     {
-        $this->schema->fields($collection);
+        $this->schema->checkCollection($collection);
 
         return $this->contents()['collections'][$collection][$id] ?? null;
     }
@@ -66,18 +66,23 @@ final class FileStore implements Store
         $id = $this->schema->checkDocument($collection, $document);
         $this->transaction(function () use ($collection, $id, $document): void {
             assert($this->working !== null);
-            $this->working['collections'][$collection][$id] = $document;
-            $this->wrote = true;
+            $current = $this->working['collections'][$collection][$id] ?? null;
+            if ($current === null || json_encode($current, Schema::JSON_FLAGS) !== json_encode($document, Schema::JSON_FLAGS)) {
+                $this->working['collections'][$collection][$id] = $document;
+                $this->wrote = true;
+            }
         });
     }
 
     public function delete(string $collection, string $id): void
     {
-        $this->schema->fields($collection);
+        $this->schema->checkCollection($collection);
         $this->transaction(function () use ($collection, $id): void {
             assert($this->working !== null);
-            unset($this->working['collections'][$collection][$id]);
-            $this->wrote = true;
+            if (isset($this->working['collections'][$collection][$id])) {
+                unset($this->working['collections'][$collection][$id]);
+                $this->wrote = true;
+            }
         });
     }
 
@@ -88,15 +93,7 @@ final class FileStore implements Store
             $this->contents()['collections'][$collection] ?? [],
             static function (array $document) use ($where): bool {
                 foreach ($where as [$field, $op, $value]) {
-                    $order = self::compare($document[$field], $value);
-                    $keep = match ($op) {
-                        '=' => $order === 0,
-                        '<' => $order < 0,
-                        '<=' => $order <= 0,
-                        '>' => $order > 0,
-                        default => $order >= 0, // '>=', the last operator Schema allows
-                    };
-                    if (!$keep) {
+                    if (!in_array(self::compare($document[$field], $value), Schema::OPERATORS[$op], true)) {
                         return false;
                     }
                 }
@@ -183,7 +180,7 @@ final class FileStore implements Store
     private function write(array $contents): void
     {
         // Escaping < and > keeps any "<?php" in a document from reopening PHP mode.
-        $json = json_encode($contents, JSON_THROW_ON_ERROR | JSON_HEX_TAG | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION);
+        $json = json_encode($contents, Schema::JSON_FLAGS | JSON_HEX_TAG);
         // A guarded .php name, so a temp file left by a crash leaks nothing over HTTP.
         $temp = $this->path . '.' . bin2hex(random_bytes(6)) . '.tmp.php';
         try {

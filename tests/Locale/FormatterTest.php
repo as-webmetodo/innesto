@@ -65,9 +65,20 @@ test('a day is today, tomorrow, a weekday within the week, or a day-month date',
     ['it', '2026-11-09 09:00', '9 novembre'],
 ]);
 
+test('a catalogue missing a name is an error', function (): void {
+    $formatter = new Formatter(new Catalogue(__DIR__ . '/fixtures'), 'it');
+
+    expect($formatter->weekday(at('2026-11-02 12:00')))->toBe('lunedì')
+        ->and(fn () => $formatter->weekday(at('2026-11-03 12:00')))->toThrow(OutOfBoundsException::class);
+});
+
 test('it and en declare their CLDR plural rules', function (string $locale): void {
     $catalogue = new Catalogue(dirname(__DIR__, 2) . '/locales');
 
-    expect(array_map(fn (int $n): string => $catalogue->pluralCategory($locale, $n), [0, 1, 2, 11, 21, 100]))
+    $rule = $catalogue->value($locale, 'plural');
+    expect($rule)->toBeInstanceOf(Closure::class);
+    assert($rule instanceof Closure);
+
+    expect(array_map(fn (int $n): mixed => $rule($n), [0, 1, 2, 11, 21, 100]))
         ->toBe(['other', 'one', 'other', 'other', 'other', 'other']);
 })->with(['it', 'en', 'en-GB']);

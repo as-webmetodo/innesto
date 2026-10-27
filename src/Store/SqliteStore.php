@@ -22,6 +22,9 @@ final class SqliteStore implements Store
 {
     private const BUSY_TIMEOUT_MS = 5000;
 
+    /** The column type of each declared field type. */
+    private const COLUMN_TYPES = ['int' => 'INTEGER', 'string' => 'TEXT'];
+
     private bool $inTransaction = false;
 
     private bool $wrote = false;
@@ -39,11 +42,12 @@ final class SqliteStore implements Store
      */
     public static function open(string $path, array $schema): self
     {
+        // Schema checks the names create() puts into SQL, before PDO creates the file.
+        $requested = new Schema($schema);
         $db = new PDO("sqlite:$path", options: [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
         $db->exec('PRAGMA busy_timeout = ' . self::BUSY_TIMEOUT_MS);
         $db->exec('PRAGMA journal_mode = DELETE');
-        // Schema checks the names create() puts into SQL.
-        $store = new self($db, new Schema($schema));
+        $store = new self($db, $requested);
         $meta = $db->query("SELECT 1 FROM sqlite_master WHERE name = 'meta'");
         if ($meta === false || $meta->fetchColumn() === false) {
             $store->create($schema);
@@ -56,12 +60,10 @@ final class SqliteStore implements Store
 
     public function get(string $collection, string $id): ?array
     {
-        $this->schema->fields($collection);
-        $statement = $this->db->prepare('SELECT doc FROM ' . self::table($collection) . ' WHERE id = ?');
-        $statement->execute([$id]);
-        $doc = $statement->fetchColumn();
+        $this->schema->checkCollection($collection);
+        $doc = $this->storedJson($collection, $id);
 
-        return is_string($doc) ? self::decode($doc) : null;
+        return $doc === null ? null : self::decode($doc);
     }
 
     public function put(string $collection, array $document): void
@@ -70,17 +72,22 @@ final class SqliteStore implements Store
         $fields = array_keys($this->schema->fields($collection));
         $columns = implode('', array_map(static fn (string $field): string => ', ' . self::column($field), $fields));
         $placeholders = str_repeat(', ?', count($fields));
-        $values = [$id, json_encode($document, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION)];
+        $json = json_encode($document, Schema::JSON_FLAGS);
+        $values = [$id, $json];
         foreach ($fields as $field) {
             $values[] = $document[$field];
         }
-        $this->write('INSERT OR REPLACE INTO ' . self::table($collection) . " (id, doc$columns) VALUES (?, ?$placeholders)", $values);
+        $this->transaction(function () use ($collection, $id, $json, $columns, $placeholders, $values): void {
+            if ($this->storedJson($collection, $id) !== $json) {
+                $this->write('INSERT OR REPLACE INTO ' . self::table($collection) . " (id, doc$columns) VALUES (?, ?$placeholders)", $values);
+            }
+        });
     }
 
     public function delete(string $collection, string $id): void
     {
-        $this->schema->fields($collection);
-        $this->write('DELETE FROM ' . self::table($collection) . ' WHERE id = ?', [$id]);
+        $this->schema->checkCollection($collection);
+        $this->transaction(fn () => $this->write('DELETE FROM ' . self::table($collection) . ' WHERE id = ?', [$id]));
     }
 
     public function list(string $collection, array $where = [], ?string $orderBy = null, bool $descending = false, ?int $limit = null): array
@@ -153,7 +160,7 @@ final class SqliteStore implements Store
             foreach ($schema['collections'] as $collection => $declaration) {
                 $columns = '';
                 foreach ($declaration['fields'] as $field => $type) {
-                    $columns .= ', ' . self::column($field) . ($type === 'int' ? ' INTEGER' : ' TEXT') . ' NOT NULL';
+                    $columns .= ', ' . self::column($field) . ' ' . self::COLUMN_TYPES[$type] . ' NOT NULL';
                 }
                 $table = self::table($collection);
                 $this->db->exec("CREATE TABLE IF NOT EXISTS $table (id TEXT PRIMARY KEY, doc TEXT NOT NULL$columns)");
@@ -177,15 +184,29 @@ final class SqliteStore implements Store
         }
     }
 
-    /** @param list<mixed> $values */
+    private function storedJson(string $collection, string $id): ?string
+    {
+        $statement = $this->db->prepare('SELECT doc FROM ' . self::table($collection) . ' WHERE id = ?');
+        $statement->execute([$id]);
+        $doc = $statement->fetchColumn();
+
+        return is_string($doc) ? $doc : null;
+    }
+
+    /**
+     * Runs one write inside the current transaction, which then bumps the
+     * revision only if a row changed.
+     *
+     * @param list<mixed> $values
+     */
     private function write(string $sql, array $values): void
     {
-        $this->transaction(function () use ($sql, $values): void {
-            $statement = $this->db->prepare($sql);
-            self::bind($statement, $values);
-            $statement->execute();
+        $statement = $this->db->prepare($sql);
+        self::bind($statement, $values);
+        $statement->execute();
+        if ($statement->rowCount() > 0) {
             $this->wrote = true;
-        });
+        }
     }
 
     /** @param list<mixed> $values */

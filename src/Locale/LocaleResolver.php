@@ -13,11 +13,12 @@ namespace Innesto\Roots\Locale;
 final class LocaleResolver
 {
     /** The locales Roots ships catalogues for. */
-    public const SHIPPED = ['it', 'en', 'en-GB'];
+    private const SHIPPED = ['it', 'en', 'en-GB'];
 
     /**
-     * The explicit $lang when it is enabled, otherwise the Default locale;
-     * `fellBack` tells the caller to log the refused request.
+     * The explicit $lang when it is enabled (by region, then language),
+     * otherwise the Default locale; `fellBack` tells the caller to log the
+     * refused request.
      *
      * @param list<string> $enabled
      * @return array{locale: string, fellBack: bool}
@@ -27,11 +28,14 @@ final class LocaleResolver
         if ($lang === null || $lang === '') {
             return ['locale' => $default, 'fellBack' => false];
         }
-        $locale = self::canonical($lang);
+        $locale = LocaleTag::canonical($lang);
+        foreach ($locale === null ? [] : LocaleTag::withLanguage($locale) as $candidate) {
+            if (in_array($candidate, $enabled, true)) {
+                return ['locale' => $candidate, 'fellBack' => false];
+            }
+        }
 
-        return in_array($locale, $enabled, true)
-            ? ['locale' => $locale, 'fellBack' => false]
-            : ['locale' => $default, 'fellBack' => true];
+        return ['locale' => $default, 'fellBack' => true];
     }
 
     /**
@@ -49,14 +53,15 @@ final class LocaleResolver
                     $quality = (float) $match[1];
                 }
             }
-            if ($quality > 0) {
+            $locale = LocaleTag::canonical(trim($parts[0]));
+            if ($quality > 0 && $locale !== null) {
                 // The index keeps equal qualities in the browser's order.
-                $preferences[] = [-$quality, $i, self::canonical(trim($parts[0]))];
+                $preferences[] = [-$quality, $i, $locale];
             }
         }
         sort($preferences);
         foreach ($preferences as [, , $locale]) {
-            foreach ([$locale, explode('-', $locale)[0]] as $candidate) {
+            foreach (LocaleTag::withLanguage($locale) as $candidate) {
                 if (in_array($candidate, self::SHIPPED, true)) {
                     return $candidate;
                 }
@@ -64,13 +69,5 @@ final class LocaleResolver
         }
 
         return 'en';
-    }
-
-    // BCP 47 tags are case-insensitive: Innesto writes `en-GB`.
-    private static function canonical(string $tag): string
-    {
-        $parts = explode('-', $tag, 2);
-
-        return strtolower($parts[0]) . (isset($parts[1]) ? '-' . strtoupper($parts[1]) : '');
     }
 }

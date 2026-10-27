@@ -54,6 +54,6 @@ interface Store
     /** The schema version this Store was created with. */
     public function schemaVersion(): int;
 
-    /** A counter bumped by every committed transaction that wrote. */
+    /** A counter bumped by every committed transaction that changed a document. */
     public function revision(): int;
 }

@@ -18,9 +18,6 @@ use OutOfBoundsException;
  */
 final class Catalogue
 {
-    // A BCP 47 language with an optional region, the only tags Innesto uses.
-    private const TAG = '/^[a-z]{2,3}(-[A-Z]{2})?$/';
-
     /** @var array<string, array<string, mixed>> catalogues loaded so far, by locale */
     private array $loaded = [];
 
@@ -51,7 +48,7 @@ final class Catalogue
     }
 
     /** The CLDR plural category of $count in $locale (e.g. `one`, `other`). */
-    public function pluralCategory(string $locale, int $count): string
+    private function pluralCategory(string $locale, int $count): string
     {
         [, $rule] = $this->lookup($locale, 'plural');
         $category = $rule instanceof Closure ? $rule($count) : null;
@@ -70,10 +67,8 @@ final class Catalogue
     /** @return array{string, mixed} the locale whose catalogue holds $key, and its value */
     private function lookup(string $locale, string $key): array
     {
-        if (preg_match(self::TAG, $locale) !== 1) {
-            throw new InvalidArgumentException("Malformed locale tag: $locale");
-        }
-        foreach (array_unique([$locale, explode('-', $locale)[0], 'en']) as $candidate) {
+        $canonical = LocaleTag::canonical($locale) ?? throw new InvalidArgumentException("Malformed locale tag: $locale");
+        foreach (array_unique([...LocaleTag::withLanguage($canonical), 'en']) as $candidate) {
             $catalogue = $this->loaded[$candidate] ??= $this->load($candidate);
             if (array_key_exists($key, $catalogue)) {
                 return [$candidate, $catalogue[$key]];

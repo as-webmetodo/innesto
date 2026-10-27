@@ -19,10 +19,16 @@ use InvalidArgumentException;
  */
 final class Schema
 {
+    /** Each filter operator, with the signs of `field <=> value` it accepts. */
+    public const OPERATORS = ['=' => [0], '<' => [-1], '<=' => [-1, 0], '>' => [1], '>=' => [0, 1]];
+
+    /** How both backends encode documents, so equal documents encode alike. */
+    public const JSON_FLAGS = JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION;
+
     private const NAME = '/^[a-z][a-z0-9_]*$/';
 
     /** @param StoreSchema $schema */
-    public function __construct(public readonly array $schema)
+    public function __construct(private readonly array $schema)
     {
         foreach ($schema['collections'] as $collection => $declaration) {
             foreach ([$collection, ...array_keys($declaration['fields'])] as $name) {
@@ -31,6 +37,11 @@ final class Schema
                 }
             }
         }
+    }
+
+    public function checkCollection(string $collection): void
+    {
+        $this->fields($collection);
     }
 
     /** @return array<string, 'int'|'string'> */
@@ -69,7 +80,7 @@ final class Schema
             if (!isset($fields[$field]) || !self::hasType($value, $fields[$field])) {
                 throw new InvalidArgumentException("Filter on $collection.$field needs a declared field and a value of its type");
             }
-            if (!in_array($op, ['=', '<', '<=', '>', '>='], true)) {
+            if (!isset(self::OPERATORS[$op])) {
                 throw new InvalidArgumentException("Unknown filter operator: $op");
             }
         }
@@ -83,6 +94,6 @@ final class Schema
 
     private static function hasType(mixed $value, string $type): bool
     {
-        return $type === 'int' ? is_int($value) : is_string($value);
+        return get_debug_type($value) === $type;
     }
 }

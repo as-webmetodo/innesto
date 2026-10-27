@@ -14,7 +14,9 @@ test('public output uses an enabled lang, otherwise the Default locale', functio
     'empty lang' => ['', ['locale' => 'it', 'fellBack' => false]],
     'enabled' => ['en', ['locale' => 'en', 'fellBack' => false]],
     'enabled, other case' => ['en-gb', ['locale' => 'en-GB', 'fellBack' => false]],
+    'region of an enabled language' => ['en-US', ['locale' => 'en', 'fellBack' => false]],
     'not enabled' => ['fr', ['locale' => 'it', 'fellBack' => true]],
+    'region of a language not enabled' => ['fr-CA', ['locale' => 'it', 'fellBack' => true]],
     'malformed' => ['../x', ['locale' => 'it', 'fellBack' => true]],
 ]);
 

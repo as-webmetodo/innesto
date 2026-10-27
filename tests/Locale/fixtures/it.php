@@ -9,4 +9,6 @@ return [
     'greeting' => 'Ciao, {name}',
     'only_it' => 'Solo italiano',
     'apples' => ['one' => '{count} mela', 'other' => '{count} mele'],
+    'no_other' => ['one' => '{count} cosa'],
+    'date.weekdays' => ['lunedì'],
 ];
