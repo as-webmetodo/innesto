@@ -132,7 +132,7 @@ From [#14], with the URL scoping from [#19].
 
 **Throttling**: after a few failures from one IP, further attempts are refused at once with `429` and `Retry-After` for a growing interval, plus a global rate cap. Roots never waits server-side (no `sleep()`). `dev/` and `app/` keep separate counters, so an attack on one never slows the other. It never locks the account. Failures are logged and counted ([#14], [#22]). Starting values are in [§8](#8-gaps-settled-by-this-spec).
 
-**CSRF**: a per-session synchronizer token in every Roots form, `SameSite=Strict`, and an Origin/Referer check against Roots' origin. All of it sits in Roots' form-post routing, so Modules never see tokens ([#14]).
+**CSRF**: a per-session synchronizer token in every Roots form, `SameSite=Strict`, and an Origin/Referer check against Roots' origin. All of it sits in Roots' form-post routing, so Modules never see tokens ([#14]). Forms posted before a session exists rely on the last two ([§8](#8-gaps-settled-by-this-spec)).
 
 **Framing**: the Developer area and the Client PWA send `Content-Security-Policy: frame-ancestors 'none'` ([#7]).
 
@@ -499,6 +499,12 @@ The user decided these on 2026-10-27, after an adversarial review of this draft:
 | How input survives an expired-session sign-in ([#21]) | A PIN overlay over the still-live form; nothing is stored in the browser ([§3.13](#313-client-pwa-shell)). |
 | Side-by-side installs sharing a Data directory ([#7]) | Outside the webroot the directory is `innesto-data-<random>/`, recorded in `data-path.php` ([§3.2](#32-data-directory-and-stores)). |
 | Where the PWA manifest and custom icon are served ([#21]) | From `app/`, without a session ([§3.9](#39-http-behaviour)). |
+
+The user decided this on 2026-10-27, while #29 was implemented:
+
+| Gap | Decision |
+|---|---|
+| CSRF on forms posted before a session exists ([#14] asks for a synchronizer token in every form) | The synchronizer token applies to the forms of a signed-in session. The setup and sign-in forms rely on `SameSite=Strict` and the Origin/Referer check against Roots' origin ([§3.6](#36-authentication-and-sessions)). |
 
 Defaults this spec sets without a separate question. Each is cheap to change in the plan:
 
