@@ -1,1 +1,6 @@
 .agents/ripresa.md
+/vendor/
+/node_modules/
+/test-results/
+/playwright-report/
+/blob-report/

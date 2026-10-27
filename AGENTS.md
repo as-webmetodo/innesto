@@ -4,8 +4,8 @@ Guidance for AI coding agents working in this repository.
 
 ## Project status
 
-Design is complete; implementation has not started. There is no code, build
-system, test suite, or linter yet. Sources of truth: the accepted spec
+Design is complete; implementation started with the scaffolding and CI of
+#25 (stub entry point, test suites, containers, workflow). Sources of truth: the accepted spec
 `docs/specs/2026-10-17-tracer-bullet-design.md` (the first slice; its §8 lists
 where it changed a ticket), `GLOSSARY.md`, `docs/adr/`, and the wayfinder map
 (GitHub issue #1) whose closed tickets hold the rationale of each decision.
@@ -47,6 +47,21 @@ official image compiles in `pdo_sqlite`, `mbstring`, `openssl` and `curl`; the
 `composer analyse` (PHPStan), `npm run test:browser` (Vitest),
 `npm run test:e2e` (Playwright, starts the container), and `composer check` /
 `npm test` to run each side in full.
+
+Decided (2026-10-27, #25): locally, Composer runs in a PHP CLI container, never
+on the host: `bin/composer <args>` (e.g. `bin/composer check`) wraps
+`docker compose run --rm cli composer`, on PHP 8.3 unless `PHP_VERSION` is set;
+CI calls `composer` directly. Node 26 comes from nvm (`nvm use`). The
+containers use `docker compose`; `npm run test:e2e` serves the repo at
+`http://localhost:8080/innesto/` from the compose service in `INNESTO_WEB`
+(`web` by default, `web-noext` or `web-no-htaccess`). The repo root is Roots'
+root: the release is `git archive --prefix=innesto/ HEAD`, `.gitattributes`
+strips everything dev-only (including `docs/` and `GLOSSARY.md`), and CI's
+release job whitelists what may ship. The always-enabled extensions, as the
+source-built image reports them, are `Core`, `date`, `hash`, `json`, `pcre`,
+`random`, `Reflection`, `SPL` and `standard` (the spec's §1 omits
+`Reflection`, which cannot be disabled). The source-header gate is the Pest
+test `tests/SourceHeadersTest.php` over `git ls-files`.
 
 ## What Innesto is
 

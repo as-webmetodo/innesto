@@ -1,0 +1,23 @@
+# The release zip is `git archive --prefix=innesto/ HEAD`: tests, tooling and
+# dev-only docs stay out of it. CI's release job whitelists what may ship.
+/.gitattributes export-ignore
+/.github export-ignore
+/.gitignore export-ignore
+/.nvmrc export-ignore
+/AGENTS.md export-ignore
+/CLAUDE.md export-ignore
+/GLOSSARY.md export-ignore
+/bin export-ignore
+/compose.yaml export-ignore
+/composer.json export-ignore
+/composer.lock export-ignore
+/docker export-ignore
+/docs export-ignore
+/package-lock.json export-ignore
+/package.json export-ignore
+/phpstan.neon export-ignore
+/phpunit.xml export-ignore
+/playwright.config.js export-ignore
+/tests export-ignore
+/vitest.config.js export-ignore
+/modules/*/tests export-ignore

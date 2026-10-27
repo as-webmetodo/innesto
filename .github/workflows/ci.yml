@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  php:
+    name: Pest and PHPStan (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.3', '8.4', '8.5']
+    steps:
+      - uses: actions/checkout@v7
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - run: composer install --no-interaction --no-progress
+      - run: composer check
+
+  browser:
+    name: Vitest browser mode
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npm run test:browser
+
+  e2e:
+    name: Playwright (${{ matrix.web }}, PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.3', '8.4', '8.5']
+        web: [web]
+        include:
+          - php: '8.3'
+            web: web-no-htaccess
+    env:
+      PHP_VERSION: ${{ matrix.php }}
+      INNESTO_WEB: ${{ matrix.web }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npm run test:e2e
+
+  noext:
+    name: No optional extensions (PHP 8.3)
+    runs-on: ubuntu-latest
+    env:
+      INNESTO_WEB: web-noext
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker compose build web-noext
+      - name: Only the always-enabled extensions are loaded
+        run: |
+          docker run --rm innesto/php-noext:8.3 php -m > modules.txt
+          printf '%s\n' '[PHP Modules]' Core date hash json pcre random Reflection SPL standard '' '[Zend Modules]' '' > expected.txt
+          diff expected.txt modules.txt
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npm run test:e2e
+
+  release:
+    name: Release zip contents
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Only shipped files are in the archive
+        run: |
+          git archive --prefix=innesto/ HEAD | tar -t > release.txt
+          allowed='^innesto/((index|view|asset|embed|data-path)\.php|(dev|app|src|templates|locales|assets|overrides)/.*|modules/([^/]+/((module\.php|(src|templates|locales|assets)/.*))?)?|LICENSE|README\.md)?$'
+          grep -vE "$allowed" release.txt > unexpected.txt || [ $? -eq 1 ]
+          if [ -s unexpected.txt ]; then cat unexpected.txt; exit 1; fi

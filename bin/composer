@@ -1,0 +1,5 @@
+#!/bin/sh
+# Runs Composer inside the PHP CLI container (PHP_VERSION, default 8.3).
+export INNESTO_UID="$(id -u)" INNESTO_GID="$(id -g)"
+docker compose build --quiet cli
+exec docker compose run --rm cli composer "$@"

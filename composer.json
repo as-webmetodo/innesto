@@ -1,0 +1,35 @@
+{
+    "name": "as-webmetodo/innesto",
+    "description": "Dynamic micro-modules for static sites. Composer is dev-only: nothing it installs ships.",
+    "type": "project",
+    "license": "MPL-2.0",
+    "require": {
+        "php": "^8.3"
+    },
+    "require-dev": {
+        "pestphp/pest": "^4.7",
+        "phpstan/phpstan": "^2.3"
+    },
+    "autoload-dev": {
+        "files": [
+            "tests/Support/source-headers.php"
+        ]
+    },
+    "config": {
+        "platform": {
+            "php": "8.3.0"
+        },
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "scripts": {
+        "test": "pest",
+        "analyse": "phpstan analyse --no-progress",
+        "check": [
+            "@test",
+            "@analyse"
+        ]
+    }
+}

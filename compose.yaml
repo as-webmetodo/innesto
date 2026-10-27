@@ -1,0 +1,46 @@
+# Containers for the end-to-end tests and the local PHP CLI.
+# `web` is the default; the other web-* variants only start when named.
+
+x-web: &web
+  ports:
+    - "8080:80"
+  volumes:
+    - .:/var/www/html/innesto:ro
+
+services:
+  web:
+    <<: *web
+    image: php:${PHP_VERSION:-8.3}-apache
+
+  # PHP 8.3 with only the always-enabled extensions (spec §7.5).
+  web-noext:
+    <<: *web
+    profiles: [noext]
+    image: innesto/php-noext:8.3
+    build:
+      context: docker
+      dockerfile: noext.Dockerfile
+
+  # Apache ignoring .htaccess (spec §7.7).
+  web-no-htaccess:
+    <<: *web
+    profiles: [no-htaccess]
+    image: php:${PHP_VERSION:-8.3}-apache
+    volumes:
+      - .:/var/www/html/innesto:ro
+      - ./docker/no-htaccess.conf:/etc/apache2/conf-enabled/zz-no-htaccess.conf:ro
+
+  cli:
+    profiles: [cli]
+    image: innesto/php-cli:${PHP_VERSION:-8.3}
+    build:
+      context: docker
+      dockerfile: cli.Dockerfile
+      args:
+        PHP_VERSION: ${PHP_VERSION:-8.3}
+    user: ${INNESTO_UID:-1000}:${INNESTO_GID:-1000}
+    environment:
+      COMPOSER_HOME: /tmp/composer
+    working_dir: /app
+    volumes:
+      - .:/app
