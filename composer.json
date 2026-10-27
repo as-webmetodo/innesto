@@ -12,7 +12,8 @@
     },
     "autoload": {
         "psr-4": {
-            "Innesto\\Roots\\": "src/"
+            "Innesto\\Roots\\": "src/",
+            "Innesto\\Hours\\": "modules/in.hours/src/"
         }
     },
     "autoload-dev": {
