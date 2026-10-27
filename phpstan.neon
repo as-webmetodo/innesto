@@ -2,5 +2,6 @@ parameters:
     level: max
     paths:
         - index.php
+        - locales
         - src
         - tests
