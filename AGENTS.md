@@ -9,6 +9,8 @@ system, test suite, or linter yet. Sources of truth: the accepted spec
 `docs/specs/2026-10-17-tracer-bullet-design.md` (the first slice; its §8 lists
 where it changed a ticket), `GLOSSARY.md`, `docs/adr/`, and the wayfinder map
 (GitHub issue #1) whose closed tickets hold the rationale of each decision.
+The spec is split into implementation tickets #25–#43, linked by GitHub's
+native blocked-by dependencies; work the open ones with no open blocker.
 Commands and stack choices not decided below are confirmed with the user
 first, then recorded in this file.
 
