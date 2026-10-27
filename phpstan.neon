@@ -6,3 +6,4 @@ parameters:
         - locales
         - src
         - tests
+        - modules
