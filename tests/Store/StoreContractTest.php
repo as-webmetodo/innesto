@@ -200,6 +200,23 @@ test('the Store keeps the schema version it was created with', function (string 
     expect($reopened->schemaVersion())->toBe(3);
 })->with('backends');
 
+test('a reopened Store keeps the collections and fields it was created with', function (string $backend): void {
+    $path = storePath();
+    openStore($backend, $path)->put('schedules', ['id' => 'a', 'position' => 1]);
+
+    // Same version, changed declaration: nothing migrates, so the created one stays.
+    $reopened = openStore($backend, $path, ['schema' => 3, 'collections' => [
+        'schedules' => ['fields' => ['position' => 'int', 'name' => 'string']],
+        'notes' => ['fields' => []],
+    ]]);
+    $reopened->put('schedules', ['id' => 'b', 'position' => 2]);
+
+    expect(array_column($reopened->list('schedules'), 'id'))->toBe(['a', 'b'])
+        ->and($reopened->get('exceptions', 'x'))->toBeNull()
+        ->and(fn () => $reopened->list('notes'))->toThrow(InvalidArgumentException::class)
+        ->and(fn () => $reopened->list('schedules', orderBy: 'name'))->toThrow(InvalidArgumentException::class);
+})->with('backends');
+
 test('the guarded Store file prints nothing when requested directly', function (): void {
     $path = storePath();
     $store = openStore('files', $path);

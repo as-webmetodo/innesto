@@ -38,7 +38,7 @@ final class LocaleResolver
      * The Developer area's and Client PWA's locale: the browser's most
      * preferred shipped locale (by region, then language), otherwise `en`.
      */
-    public static function forAdmin(?string $acceptLanguage): string
+    public static function forDeveloperAreaAndClientPwa(?string $acceptLanguage): string
     {
         $preferences = [];
         foreach (explode(',', $acceptLanguage ?? '') as $i => $range) {

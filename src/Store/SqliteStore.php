@@ -8,6 +8,7 @@ namespace Innesto\Roots\Store;
 
 use PDO;
 use PDOException;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -25,12 +26,14 @@ final class SqliteStore implements Store
 
     private bool $wrote = false;
 
+    /** @param Schema $schema the collections and fields declared when the Store was created */
     private function __construct(private readonly PDO $db, private readonly Schema $schema)
     {
     }
 
     /**
-     * Opens the Store at $path, creating it with $schema's version if needed.
+     * Opens the Store at $path, creating it with $schema if needed. An
+     * existing Store keeps the version and declaration it was created with.
      *
      * @param StoreSchema $schema
      */
@@ -39,13 +42,16 @@ final class SqliteStore implements Store
         $db = new PDO("sqlite:$path", options: [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
         $db->exec('PRAGMA busy_timeout = ' . self::BUSY_TIMEOUT_MS);
         $db->exec('PRAGMA journal_mode = DELETE');
+        // Schema checks the names create() puts into SQL.
         $store = new self($db, new Schema($schema));
         $meta = $db->query("SELECT 1 FROM sqlite_master WHERE name = 'meta'");
         if ($meta === false || $meta->fetchColumn() === false) {
             $store->create($schema);
         }
+        /** @var array<string, array{fields: array<string, 'int'|'string'>}> $declared */
+        $declared = self::decode($store->meta('declared'));
 
-        return $store;
+        return new self($db, new Schema(['schema' => (int) $store->meta('schema'), 'collections' => $declared]));
     }
 
     public function get(string $collection, string $id): ?array
@@ -124,12 +130,12 @@ final class SqliteStore implements Store
 
     public function schemaVersion(): int
     {
-        return $this->meta('schema');
+        return (int) $this->meta('schema');
     }
 
     public function revision(): int
     {
-        return $this->meta('revision');
+        return (int) $this->meta('revision');
     }
 
     /** @param StoreSchema $schema */
@@ -138,8 +144,12 @@ final class SqliteStore implements Store
         $this->db->exec('BEGIN IMMEDIATE');
         try {
             // Another request may have created it while this one waited for the lock.
-            $this->db->exec('CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value INTEGER NOT NULL)');
-            $this->db->exec("INSERT OR IGNORE INTO meta (key, value) VALUES ('schema', {$schema['schema']}), ('revision', 0)");
+            // No column type: values keep their own (an integer, or the declaration as JSON).
+            $this->db->exec('CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value NOT NULL)');
+            $statement = $this->db->prepare("INSERT OR IGNORE INTO meta (key, value) VALUES ('schema', ?), ('declared', ?), ('revision', 0)");
+            $statement->bindValue(1, $schema['schema'], PDO::PARAM_INT);
+            $statement->bindValue(2, json_encode($schema['collections'], JSON_THROW_ON_ERROR));
+            $statement->execute();
             foreach ($schema['collections'] as $collection => $declaration) {
                 $columns = '';
                 foreach ($declaration['fields'] as $field => $type) {
@@ -186,12 +196,13 @@ final class SqliteStore implements Store
         }
     }
 
-    private function meta(string $key): int
+    private function meta(string $key): int|string
     {
         $statement = $this->db->prepare('SELECT value FROM meta WHERE key = ?');
         $statement->execute([$key]);
+        $value = $statement->fetchColumn();
 
-        return (int) $statement->fetchColumn();
+        return is_int($value) || is_string($value) ? $value : throw new RuntimeException("Store meta $key is missing");
     }
 
     /** @return array<string, mixed> */

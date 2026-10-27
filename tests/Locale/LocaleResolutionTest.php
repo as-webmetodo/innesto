@@ -19,7 +19,7 @@ test('public output uses an enabled lang, otherwise the Default locale', functio
 ]);
 
 test('the Developer area and Client PWA follow the browser among shipped locales', function (?string $acceptLanguage, string $expected): void {
-    expect(LocaleResolver::forAdmin($acceptLanguage))->toBe($expected);
+    expect(LocaleResolver::forDeveloperAreaAndClientPwa($acceptLanguage))->toBe($expected);
 })->with([
     'none' => [null, 'en'],
     'exact region' => ['en-GB,en;q=0.9', 'en-GB'],

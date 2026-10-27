@@ -16,7 +16,7 @@ use Throwable;
  *
  * @phpstan-import-type StoreSchema from Store
  * @phpstan-import-type Document from Store
- * @phpstan-type Contents array{schema: int, revision: int, collections: array<string, array<string, Document>>}
+ * @phpstan-type Contents array{schema: int, declared: array<string, array{fields: array<string, 'int'|'string'>}>, revision: int, collections: array<string, array<string, Document>>}
  */
 final class FileStore implements Store
 {
@@ -27,12 +27,14 @@ final class FileStore implements Store
 
     private bool $wrote = false;
 
+    /** @param Schema $schema the collections and fields declared when the Store was created */
     private function __construct(private readonly string $path, private readonly Schema $schema)
     {
     }
 
     /**
-     * Opens the Store at $path, creating it with $schema's version if needed.
+     * Opens the Store at $path, creating it with $schema if needed. An
+     * existing Store keeps the version and declaration it was created with.
      *
      * @param StoreSchema $schema
      */
@@ -42,13 +44,14 @@ final class FileStore implements Store
         if (!is_file($path)) {
             $lock = $store->lock();
             try {
-                is_file($path) || $store->write(['schema' => $schema['schema'], 'revision' => 0, 'collections' => []]);
+                is_file($path) || $store->write(['schema' => $schema['schema'], 'declared' => $schema['collections'], 'revision' => 0, 'collections' => []]);
             } finally {
                 self::unlock($lock);
             }
         }
+        $created = $store->read();
 
-        return $store;
+        return new self($path, new Schema(['schema' => $created['schema'], 'collections' => $created['declared']]));
     }
 
     public function get(string $collection, string $id): ?array
