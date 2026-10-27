@@ -4,13 +4,13 @@ Guidance for AI coding agents working in this repository.
 
 ## Project status
 
-Innesto is in the **concept & architectural design** phase. There is no code,
-build system, test suite, or linter yet. Sources of truth: the brief
-`README.md`, `GLOSSARY.md`, `docs/adr/`, and the wayfinder map (GitHub issue
-#1) whose closed tickets hold each design decision. Until code exists, work here is
-specs and design documents, not implementation; do not invent commands or
-stack choices — confirm them with the user and record them in this file once
-decided.
+Design is complete; implementation has not started. There is no code, build
+system, test suite, or linter yet. Sources of truth: the accepted spec
+`docs/specs/2026-10-17-tracer-bullet-design.md` (the first slice; its §8 lists
+where it changed a ticket), `GLOSSARY.md`, `docs/adr/`, and the wayfinder map
+(GitHub issue #1) whose closed tickets hold the rationale of each decision.
+Commands and stack choices not decided below are confirmed with the user
+first, then recorded in this file.
 
 Decided: license is **MPL 2.0** for the whole repo; contributions use a DCO
 sign-off (`git commit -s`); every source file carries
@@ -64,12 +64,6 @@ Cross-cutting conventions every module must honour:
   rendering path serves all four rather than four implementations.
 - **Non-intrusive styling**: semantic HTML, CSS custom properties, optional
   utility-class mapping, full template overrides.
-
-## Known inconsistency in the brief (README.md)
-
-The "Project Status" section names the first packages *Mail / Book / Hours*,
-while the ecosystem section names them `in.modulo` / `in.agenda` / `in.hours`.
-Ask which naming is canonical before using either in specs or code.
 
 ## Documents
 
