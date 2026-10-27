@@ -89,7 +89,7 @@ final class StatusTimeline
         $segments = [];
         foreach (array_slice($cuts, 0, -1) as $i => $from) {
             $to = $cuts[$i + 1];
-            [$open, $change] = self::stateAt($from, $intervals);
+            [$open, $change] = self::statusAt($from, $intervals);
             $segments[] = [
                 'from' => gmdate('Y-m-d\TH:i:s\Z', $from),
                 'to' => gmdate('Y-m-d\TH:i:s\Z', $to),
@@ -107,9 +107,9 @@ final class StatusTimeline
      */
     private function sentence(bool $open, int $from, ?int $change, bool $pastHorizon, DateTimeZone $zone, Formatter $formatter, string $locale): string
     {
-        $state = $open ? 'open' : 'closed';
+        $status = $open ? 'open' : 'closed';
         if ($change === null) {
-            return $this->sentences->text($locale, "$state.until_further_notice");
+            return $this->sentences->text($locale, "$status.until_further_notice");
         }
         $day = (new DateTimeImmutable("@$from"))->setTimezone($zone);
         $at = (new DateTimeImmutable("@$change"))->setTimezone($zone);
@@ -117,9 +117,9 @@ final class StatusTimeline
         $params = ['time' => $formatter->time($at)];
 
         return match (true) {
-            $pastHorizon || $days >= 7 => $this->sentences->text($locale, "$state.date", $params + ['date' => $formatter->dayMonth($at)]),
-            $days === 0 => $this->sentences->text($locale, "$state.today", $params),
-            default => $this->sentences->text($locale, "$state.day", $params + ['day' => $formatter->relativeDay($at, $day)]),
+            $pastHorizon || $days >= 7 => $this->sentences->text($locale, "$status.date", $params + ['date' => $formatter->dayMonth($at)]),
+            $days === 0 => $this->sentences->text($locale, "$status.today", $params),
+            default => $this->sentences->text($locale, "$status.day", $params + ['day' => $formatter->relativeDay($at, $day)]),
         };
     }
 
@@ -129,7 +129,7 @@ final class StatusTimeline
      * @param list<array{int, int}> $intervals merged and sorted
      * @return array{bool, ?int}
      */
-    private static function stateAt(int $instant, array $intervals): array
+    private static function statusAt(int $instant, array $intervals): array
     {
         foreach ($intervals as [$from, $to]) {
             if ($instant < $from) {

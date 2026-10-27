@@ -97,7 +97,7 @@ test('the timeline covers [now, now + 14 days) without gaps', function (): void 
     }
 });
 
-test('split shifts alternate open and closed, split at local midnight', function (): void {
+test('several Opening periods a day alternate open and closed, split at local midnight', function (): void {
     $segments = hoursTimelineAt('2026-11-03 10:00', hoursSchedule(hoursEveryDay('09:00–13:00', '15:00–19:00')));
 
     expect(array_slice($segments, 0, 5))->toBe([
@@ -280,6 +280,24 @@ test('a segment running past the horizon ends with an absolute date', function (
         ->and($beforeLast['text'])->toBe('Closed · reopens Wednesday at 09:00');
 });
 
+test('a change just within a year past the horizon is found; one beyond it reads "until further notice"', function (string $closureEnd, string $text): void {
+    // Searched dates end before 2027-11-19: the horizon's 15 dates from 2026-11-03, then 366 more.
+    $segments = hoursTimelineAt('2026-11-03 10:00', hoursSchedule(hoursEveryDay('09:00–19:00')), [hoursClosure('2026-11-05', $closureEnd)]);
+
+    expect(end($segments)['text'] ?? null)->toBe($text);
+})->with([
+    'reopening on the last searched date' => ['2027-11-17', 'Closed · reopens on 18 November at 09:00'],
+    'reopening past it' => ['2027-11-18', 'Closed until further notice'],
+]);
+
+test('a Schedule with no Weekly hours is closed until further notice', function (): void {
+    $segments = hoursTimelineAt('2026-11-03 10:00', hoursSchedule([]));
+
+    expect(hoursOpenings($segments))->toBe([])
+        ->and(array_unique(array_column($segments, 'text')))->toBe(['Closed until further notice'])
+        ->and(count($segments))->toBe(15);
+});
+
 test('a Schedule that is always open stays open until further notice', function (): void {
     $segments = hoursTimelineAt('2026-11-03 10:00', hoursSchedule(hoursEveryDay('00:00–24:00')));
 
@@ -289,5 +307,6 @@ test('a Schedule that is always open stays open until further notice', function 
 
 test('malformed times and dates are refused', function (): void {
     expect(fn () => hoursTimelineAt('2026-11-03 10:00', hoursSchedule(hoursEveryDay('9:00–13:00'))))->toThrow(InvalidArgumentException::class, 'Malformed Opening period 9:00–13:00')
-        ->and(fn () => hoursTimelineAt('2026-11-03 10:00', hoursSchedule(hoursEveryDay('09:00–13:00')), [hoursClosure('2026-11-4', '2026-11-05')]))->toThrow(InvalidArgumentException::class, 'Malformed date span 2026-11-4–2026-11-05');
+        ->and(fn () => hoursTimelineAt('2026-11-03 10:00', hoursSchedule(hoursEveryDay('09:00–13:00')), [hoursClosure('2026-11-4', '2026-11-05')]))->toThrow(InvalidArgumentException::class, 'Malformed date span 2026-11-4–2026-11-05')
+        ->and(fn () => hoursTimelineAt('2026-11-03 10:00', hoursSchedule(hoursEveryDay('09:00–13:00')), [hoursClosure('12-24', null, yearly: true)]))->toThrow(InvalidArgumentException::class, 'A yearly span needs an end');
 });
