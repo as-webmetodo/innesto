@@ -15,7 +15,8 @@ interface Module
 {
     /**
      * Runs once, when the Developer first activates the Module, inside a
-     * transaction of its new Store: a throw rolls everything back.
+     * transaction of its new Store: a throw rolls everything back. The
+     * spec's "optional" hook: a Module with nothing to seed leaves it empty.
      */
     public function onActivate(Context $context): void;
 

@@ -537,6 +537,11 @@ The user decided these on 2026-10-28, while #32 was implemented:
 | The mail service before the Self-check exists ([§3.14](#314-mail-service)) | A `mail()`-backed `Mail` with `send(to, subject, body)`, in the Context only of a Module that requires or optionally uses `mail`. |
 | When `onActivate` runs ([§3.7](#37-modules-discovery-manifest-lifecycle)) | Only on Uploaded → Active; re-activating an Inactive Module keeps its Store as it is. Halted is worked out on every load and never stored; a Store schema mismatch Halts only an Active or Inactive Module, since an Uploaded one's leftover Store is removed by its next Activate. Activation reports a locale gap but does not refuse. |
 | Concurrent lifecycle actions ([§3.7](#37-modules-discovery-manifest-lifecycle)) | Activate, Deactivate and Delete data each run inside a content Store transaction and read the Module's state afresh under its lock, so two requests never both act on one state. Only the Module's own code is fenced: Roots failing to create or commit a Module Store is Roots' error, never counted against the Module. |
+| How `onActivate` is optional ([§3.7](#37-modules-discovery-manifest-lifecycle)) | It is a method of the `Module` interface; a Module with nothing to seed leaves its body empty. |
+| Whether a Halted Module can be deactivated ([§3.7](#37-modules-discovery-manifest-lifecycle)) | Yes, when it is Active: Deactivate runs none of its code, and it lets the Developer reach Delete data to clear a schema mismatch. |
+| What the mail service accepts ([§3.14](#314-mail-service)) | One plain address and a one-line subject; anything else throws before `mail()` runs, so a Module cannot inject headers. |
+| A Manifest that prints ([§3.7](#37-modules-discovery-manifest-lifecycle)) | Its output is discarded and the Module is Halted: `module.php` only returns an array. |
+| What status a Screen page may answer ([§3.7](#37-modules-discovery-manifest-lifecycle)) | A 2xx, 4xx or 5xx; redirects are `ScreenResult::redirect()`'s, to a developer Screen of the same Module. |
 
 Defaults this spec sets without a separate question. Each is cheap to change in the plan:
 
