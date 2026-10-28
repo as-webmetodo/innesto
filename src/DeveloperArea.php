@@ -64,8 +64,10 @@ final class DeveloperArea
         if ($request->method !== 'POST') {
             return match (true) {
                 $session === null || $config === null || $modules === null => $this->signedOutPage(200),
-                $screen === 'config' || !$config->confirmed() => $config->page(),
+                !$config->confirmed() => $config->page(),
+                // Before Roots' own Screens, so a Module Screen may share their names.
                 isset($request->query['module']) => $modules->screen(),
+                $screen === 'config' => $config->page(),
                 $screen === 'modules' => $modules->page(),
                 default => $this->homePage($session['csrf'], 200),
             };

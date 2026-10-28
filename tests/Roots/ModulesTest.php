@@ -236,6 +236,19 @@ test('a Screen form is posted through Roots\' CSRF check, then redirects to a Sc
         ->and($line[0]['source'] ?? null)->toBe('acme.probe');
 });
 
+test('a Module Screen named like one of Roots\' own is the Module\'s', function (): void {
+    $install = install();
+    uploadModules($install, FAKE_MODULES . '/acme.probe');
+    $token = confirmedDeveloper($install);
+    devPost($install, $token, ['action' => 'activate', 'module' => 'acme.probe']);
+
+    $page = devPage($install, $token, ['module' => 'acme.probe', 'screen' => 'config']);
+
+    expect($page->status)->toBe(200)
+        ->and($page->body)->toContain('<dd id="greeting">hello</dd>')
+        ->and($page->body)->not->toContain('name="default_locale"');
+});
+
 test('a throwing Screen gets Roots\' fallback page, is counted, and the Module stays Active', function (string $screen, string $message): void {
     $install = install();
     uploadModules($install, FAKE_MODULES . '/acme.probe');

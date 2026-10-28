@@ -15,7 +15,7 @@ return [
     'namespace' => 'Acme\\Probe',
     'entry' => 'Acme\\Probe\\Module',
     'views' => [],
-    'screens' => ['echo' => 'developer', 'boom' => 'developer', 'empty' => 'developer', 'stray' => 'developer', 'phone' => 'client'],
+    'screens' => ['echo' => 'developer', 'config' => 'developer', 'boom' => 'developer', 'empty' => 'developer', 'stray' => 'developer', 'phone' => 'client'],
     'tiles' => false,
     'store' => ['schema' => 1, 'collections' => ['notes' => ['fields' => []]]],
 ];
