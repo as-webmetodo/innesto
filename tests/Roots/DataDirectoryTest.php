@@ -94,3 +94,39 @@ test('a recorded Data directory PHP cannot write to is refused', function (): vo
 
     expect(fn () => DataDirectory::locate($roots, $webroot, $base))->toThrow(RuntimeException::class);
 });
+
+test('a recorded Data directory reached through a symlink into the webroot is denied to HTTP', function (): void {
+    ['base' => $base, 'webroot' => $webroot, 'roots' => $roots] = hostAccount();
+    mkdir("$webroot/data");
+    symlink("$webroot/data", "$base/link");
+    file_put_contents("$roots/data-path.php", "<?php\n\ndeclare(strict_types=1);\n\nreturn " . var_export("$base/link", true) . ";\n");
+
+    $data = DataDirectory::locate($roots, $webroot, $base);
+
+    expect($data->path)->toBe("$webroot/data")
+        ->and($data->insideWebroot)->toBeTrue()
+        ->and(file_get_contents("$webroot/data/.htaccess"))->toContain('Require all denied');
+});
+
+test('a recorded Data directory whose .. leads into the webroot is denied to HTTP', function (): void {
+    ['base' => $base, 'webroot' => $webroot, 'roots' => $roots] = hostAccount();
+    mkdir("$base/elsewhere");
+    file_put_contents("$roots/data-path.php", "<?php\n\ndeclare(strict_types=1);\n\nreturn " . var_export("$base/elsewhere/../public_html/data", true) . ";\n");
+
+    $data = DataDirectory::locate($roots, $webroot, $base);
+
+    expect($data->path)->toBe("$webroot/data")
+        ->and($data->insideWebroot)->toBeTrue()
+        ->and(file_get_contents("$webroot/data/.htaccess"))->toContain('Require all denied');
+});
+
+test('a data-path.php that does not return an absolute path is refused', function (string $returns): void {
+    ['base' => $base, 'webroot' => $webroot, 'roots' => $roots] = hostAccount();
+    file_put_contents("$roots/data-path.php", "<?php\n\ndeclare(strict_types=1);\n\nreturn $returns;\n");
+
+    expect(fn () => DataDirectory::locate($roots, $webroot, $base))
+        ->toThrow(RuntimeException::class, 'must return an absolute path');
+})->with([
+    'a relative path' => "'data'",
+    'a non-string' => '42',
+]);

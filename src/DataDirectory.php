@@ -34,7 +34,9 @@ final class DataDirectory
                 throw new RuntimeException("$record must return an absolute path");
             }
 
-            return new self(self::create($path, $webroot), self::isInside($path, $webroot), null);
+            $path = self::create($path, $webroot);
+
+            return new self($path, self::isInside($path, $webroot), null);
         }
 
         $suffix = bin2hex(random_bytes(8));
@@ -47,7 +49,7 @@ final class DataDirectory
 
             return new self($path, self::isInside($path, $webroot), $contents);
         }
-        self::create($path, $webroot);
+        $path = self::create($path, $webroot);
         file_put_contents($record, $contents, LOCK_EX);
 
         return new self($path, self::isInside($path, $webroot), null);
@@ -65,11 +67,13 @@ final class DataDirectory
         }
     }
 
+    /** @return string the Data directory's canonical path, so a symlink or `..` cannot hide that it is inside the webroot */
     private static function create(string $path, string $webroot): string
     {
         if (!is_dir($path) && !mkdir($path, 0o755) && !is_dir($path)) {
             throw new RuntimeException("Cannot create the Data directory $path");
         }
+        $path = self::canonical($path);
         if (!is_writable($path)) {
             throw new RuntimeException("The Data directory $path is not writable");
         }
