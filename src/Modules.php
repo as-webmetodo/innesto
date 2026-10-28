@@ -277,13 +277,20 @@ final class Modules
         return null;
     }
 
-    /** The Manifest of Module $id when it is Active, not Halted and declares developer Screen $name, else null. */
-    public function developerScreen(string $id, string $name): ?Manifest
+    /** The Manifest of Module $id when Roots may run it: Active and not Halted; else null. */
+    public function runnable(string $id): ?Manifest
     {
         $module = $this->all()[$id] ?? null;
-        $manifest = $module !== null && $module['state'] === self::ACTIVE && $module['halt'] === null ? $module['manifest'] : null;
 
-        return ($manifest?->screens[$name] ?? null) === 'developer' ? $manifest : null;
+        return $module !== null && $module['state'] === self::ACTIVE && $module['halt'] === null ? $module['manifest'] : null;
+    }
+
+    /** The Manifest of Module $id when it is runnable and declares developer Screen $name, else null. */
+    public function developerScreen(string $id, string $name): ?Manifest
+    {
+        $manifest = $this->runnable($id);
+
+        return $manifest !== null && in_array($name, $manifest->developerScreens(), true) ? $manifest : null;
     }
 
     /**
@@ -299,7 +306,7 @@ final class Modules
 
         return $this->fence->call($manifest->id, function () use ($manifest, $name, $request, $context): ScreenResult {
             $result = $this->entry($manifest)->screen($name, $context, $request);
-            if ($result->screen !== null && ($manifest->screens[$result->screen] ?? null) !== 'developer') {
+            if ($result->screen !== null && !in_array($result->screen, $manifest->developerScreens(), true)) {
                 throw new LogicException("Screen $name redirected to $result->screen, which is not a developer Screen of $manifest->id");
             }
 

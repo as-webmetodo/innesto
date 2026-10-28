@@ -112,6 +112,12 @@ final class Manifest
         return str_replace('.', '-', $this->id);
     }
 
+    /** @return list<string> the names of the Module's developer Screens */
+    public function developerScreens(): array
+    {
+        return array_keys(array_filter($this->screens, static fn (string $side): bool => $side === 'developer'));
+    }
+
     /** @return StoreSchema the Module Store's schema: the Manifest's collections and Roots' settings collection */
     public function storeSchema(): array
     {

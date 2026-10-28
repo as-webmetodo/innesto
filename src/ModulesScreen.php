@@ -39,9 +39,7 @@ final class ModulesScreen
                 'halt' => $module['halt'],
                 'fault' => $this->fence->fault($id),
                 'gap' => $module['manifest'] === null ? [] : array_values(array_diff($this->shared->enabledLocales, $this->modules->covered($id))),
-                'screens' => $module['state'] === Modules::ACTIVE && $module['halt'] === null && $module['manifest'] !== null
-                    ? array_keys(array_filter($module['manifest']->screens, static fn (string $side): bool => $side === 'developer'))
-                    : [],
+                'screens' => $this->modules->runnable($id)?->developerScreens() ?? [],
             ];
         }
 
@@ -90,7 +88,7 @@ final class ModulesScreen
         return Pages::html($this->template, $result === null ? 500 : $result->status, 'screen', [
             'module' => $manifest->name,
             'id' => $id,
-            'screens' => array_keys(array_filter($manifest->screens, static fn (string $side): bool => $side === 'developer')),
+            'screens' => $manifest->developerScreens(),
             'current' => $name,
             // A fault leaves nothing to show: Roots says so instead.
             'content' => $result?->html,
