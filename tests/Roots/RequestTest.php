@@ -60,3 +60,18 @@ test('HTTPS off or absent is plain HTTP', function (?string $https): void {
     'off' => ['off'],
     'empty' => [''],
 ]);
+
+test('HTTPS is also read from the request scheme and port 443', function (string $key, string|int $value): void {
+    expect(fromGlobals('dev', [$key => $value])->https)->toBeTrue();
+})->with([
+    'REQUEST_SCHEME' => ['REQUEST_SCHEME', 'https'],
+    'SERVER_PORT as a string' => ['SERVER_PORT', '443'],
+    'SERVER_PORT as an int' => ['SERVER_PORT', 443],
+]);
+
+test('forwarded headers any client can send never make a request HTTPS', function (string $key, string $value): void {
+    expect(fromGlobals('dev', [$key => $value, 'REQUEST_SCHEME' => 'http', 'SERVER_PORT' => '80'])->https)->toBeFalse();
+})->with([
+    'X-Forwarded-Proto' => ['HTTP_X_FORWARDED_PROTO', 'https'],
+    'X-Forwarded-SSL' => ['HTTP_X_FORWARDED_SSL', 'on'],
+]);

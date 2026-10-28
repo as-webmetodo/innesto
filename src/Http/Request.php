@@ -45,14 +45,12 @@ final class Request
                 $headers[$name] = $_SERVER[$key];
             }
         }
-        $https = $_SERVER['HTTPS'] ?? '';
-
         return new self(
             is_string($_SERVER['REQUEST_METHOD'] ?? null) ? strtoupper($_SERVER['REQUEST_METHOD']) : 'GET',
             $entry,
             rtrim($base, '/') . '/',
             is_string($_SERVER['HTTP_HOST'] ?? null) ? $_SERVER['HTTP_HOST'] : '',
-            is_string($https) && $https !== '' && strtolower($https) !== 'off',
+            self::httpsFromGlobals(),
             is_string($_SERVER['REMOTE_ADDR'] ?? null) ? $_SERVER['REMOTE_ADDR'] : '',
             self::strings($_POST),
             self::strings($_COOKIE),
@@ -69,6 +67,18 @@ final class Request
     public function origin(): string
     {
         return ($this->https ? 'https' : 'http') . '://' . $this->host;
+    }
+
+    /** What the server says; X-Forwarded-* is never read, since any client can send it. */
+    private static function httpsFromGlobals(): bool
+    {
+        $https = $_SERVER['HTTPS'] ?? '';
+        $scheme = $_SERVER['REQUEST_SCHEME'] ?? '';
+        $port = $_SERVER['SERVER_PORT'] ?? '';
+
+        return (is_string($https) && $https !== '' && strtolower($https) !== 'off')
+            || (is_string($scheme) && strtolower($scheme) === 'https')
+            || ((is_string($port) || is_int($port)) && (string) $port === '443');
     }
 
     /**
