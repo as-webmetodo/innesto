@@ -17,18 +17,41 @@ test('setup without the browser\'s probe results is refused: the Self-check need
         ->and(setupCode($install))->toBe($code);
 });
 
-test('the setup page writes the probe files and carries the probes, with URLs relative to Roots\' own', function (): void {
+test('only a right Setup code opens the Self-check step, which writes the probe files and carries the probes', function (): void {
     $install = install();
-
-    $page = $install['app']->handle(request('GET', 'dev'));
+    $first = $install['app']->handle(request('GET', 'dev'));
     $data = dataPath($install);
+    $wrong = $install['app']->handle(request('POST', 'dev', ['action' => 'setup_code', 'code' => 'AAAA-AAAA-AAAA'], headers: ORIGIN));
 
-    expect($page->body)->toContain('"txt":"/innesto/../../' . basename($data) . '/probe.txt"')
-        ->and($page->body)->toContain('"htaccess":"/innesto/templates/probe.txt"')
-        ->and($page->body)->toContain('name="probes"')
+    $step = $install['app']->handle(request('POST', 'dev', ['action' => 'setup_code', 'code' => setupCode($install)], headers: ORIGIN));
+
+    // Nothing before the code tells an anonymous visitor where the Data directory is.
+    expect($first->body)->not->toContain(basename($data))
+        ->and($first->body)->not->toContain('name="probes"')
+        ->and($wrong->status)->toBe(422)
+        ->and($wrong->body)->not->toContain(basename($data))
+        ->and(loggedEvents($install))->toBe(['setup_code.issued', 'setup.failed'])
+        ->and($step->status)->toBe(200)
+        ->and($step->body)->toContain('"txt":"/innesto/../../' . basename($data) . '/probe.txt"')
+        ->and($step->body)->toContain('"htaccess":"/innesto/templates/probe.txt"')
+        ->and($step->body)->toContain('name="probes"')
+        ->and($step->body)->toContain('name="code" value="' . setupCode($install) . '"')
+        ->and($step->body)->toContain('name="password"')
         ->and(file_get_contents("$data/probe.txt"))->toContain(Innesto\Roots\SelfCheck::MARKER)
         ->and(file_get_contents("$data/probe.php"))->toStartWith("<?php exit; ?>\n")
         ->and(file_get_contents(__DIR__ . '/../../templates/probe.txt'))->toContain(Innesto\Roots\SelfCheck::MARKER);
+});
+
+test('a wrong Setup code at the first step counts toward the throttle', function (): void {
+    $install = install();
+    $install['app']->handle(request('GET', 'dev'));
+    for ($i = 0; $i < 6; $i++) {
+        $install['app']->handle(request('POST', 'dev', ['action' => 'setup_code', 'code' => 'AAAA-AAAA-AAAA'], headers: ORIGIN));
+    }
+
+    $response = $install['app']->handle(request('POST', 'dev', ['action' => 'setup_code', 'code' => setupCode($install)], headers: ORIGIN));
+
+    expect($response->status)->toBe(429);
 });
 
 test('a guarded PHP probe that shows its contents is a Fail: setup refuses to finish and logs it', function (): void {
@@ -43,6 +66,7 @@ test('a guarded PHP probe that shows its contents is a Fail: setup refuses to fi
         ->and($response->body)->toContain('shows its contents over HTTP')
         ->and(sessionCookie($response))->toBeNull()
         ->and(setupCode($install))->toBe($code)
+        ->and($response->body)->toContain('name="code" value="' . $code . '"')
         ->and(loggedEvents($install))->toBe(['setup_code.issued', 'selfcheck.fail']);
 });
 

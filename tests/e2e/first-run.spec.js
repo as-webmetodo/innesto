@@ -27,6 +27,7 @@ test('first run: the Setup code read over FTP and a new password sign the Develo
   const code = /Setup code: (\S+)/.exec(setupCodeFile)[1];
 
   await page.getByLabel('Setup code').fill(code);
+  await page.getByRole('button', { name: 'Continue' }).click();
   await page.getByLabel('New Developer password').fill(password);
   await page.getByRole('button', { name: 'Set the password and sign in' }).click();
 

@@ -29,6 +29,7 @@ test('setup runs the HTTP probes from the browser, picks the backend and says wh
   await page.goto('dev/');
   const setupCodeFile = inContainer(`cat "$(php -r "define('INNESTO_ROOTS', true); echo require '/var/www/html/innesto/data-path.php';")/setup-code.php"`);
   await page.getByLabel('Setup code').fill(/Setup code: (\S+)/.exec(setupCodeFile)[1]);
+  await page.getByRole('button', { name: 'Continue' }).click();
   await page.getByLabel('New Developer password').fill(password);
   // Enabled once the probes have run.
   await page.getByRole('button', { name: 'Set the password and sign in' }).click();
@@ -60,13 +61,14 @@ test('a guarded PHP file that shows its contents is a Fail and setup refuses to 
   const data = inContainer(`php -r "define('INNESTO_ROOTS', true); echo require '/var/www/html/innesto/data-path.php';"`);
   // A host that stops running PHP in the Data directory would leak every guarded file.
   await page.route('**/probe.php', (route) => route.fulfill({ status: 200, contentType: 'text/plain', body: "<?php exit; ?>\ninnesto-probe\n" }));
-  await page.reload();
   const setupCodeFile = inContainer(`cat "${data}/setup-code.php"`);
   await page.getByLabel('Setup code').fill(/Setup code: (\S+)/.exec(setupCodeFile)[1]);
+  await page.getByRole('button', { name: 'Continue' }).click();
   await page.getByLabel('New Developer password').fill(password);
   await page.getByRole('button', { name: 'Set the password and sign in' }).click();
 
   await expect(page.getByText('The Self-check found a Fail')).toBeVisible();
   await expect(page.locator('li[data-grade="fail"]', { hasText: 'shows its contents over HTTP' })).toBeVisible();
-  await expect(page.getByLabel('Setup code')).toBeVisible();
+  // Still the Self-check step, for another try once it is fixed.
+  await expect(page.getByLabel('New Developer password')).toBeVisible();
 });

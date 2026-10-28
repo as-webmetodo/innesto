@@ -87,13 +87,17 @@ final class DeveloperArea
             return $this->forbidden();
         }
         $action = $request->form['action'] ?? '';
-        if ($action === 'setup' || $action === 'signin') {
+        if ($action === 'setup_code' || $action === 'setup' || $action === 'signin') {
             $throttled = $this->throttled($request, 'Sign-in refused: too many failures', $this->signedOutPage(...));
             if ($throttled !== null) {
                 return $throttled;
             }
 
-            return $action === 'setup' ? $this->setup($request) : $this->signIn($request);
+            return match ($action) {
+                'setup_code' => $this->setupCode($request),
+                'setup' => $this->setup($request),
+                default => $this->signIn($request),
+            };
         }
         if ($session === null || $config === null || $modules === null || $health === null || $token === null || !hash_equals($session['csrf'], $request->form['csrf'] ?? '')) {
             $this->log->write('warning', 'roots', 'csrf.refused', 'A Developer-area form had no valid CSRF token', ['ip' => $request->ip]);
@@ -132,29 +136,39 @@ final class DeveloperArea
         }
     }
 
+    /**
+     * The first setup step: a right Setup code opens the Self-check step,
+     * whose probes would show the Data directory's name to anyone. The code
+     * travels in that page's form, so it answers 200 rather than redirecting.
+     */
+    private function setupCode(Request $request): Response
+    {
+        $code = $this->checkedSetupCode($request);
+        if ($code instanceof Response) {
+            return $code;
+        }
+
+        return $this->signedOutPage(200, code: $code);
+    }
+
     private function setup(Request $request): Response
     {
-        if (!$this->setupCode->pending()) {
-            return Response::redirect($request->basePath . 'dev/');
-        }
-        if (!$this->setupCode->matches($request->form['code'] ?? '')) {
-            $this->throttle->fail($request->ip);
-            $this->log->write('warning', 'roots', 'setup.failed', 'Wrong Setup code', ['ip' => $request->ip]);
-
-            return $this->signedOutPage(422, 'dev.error.code');
+        $code = $this->checkedSetupCode($request);
+        if ($code instanceof Response) {
+            return $code;
         }
         $password = $request->form['password'] ?? '';
         if (!self::acceptablePassword($password)) {
-            return $this->signedOutPage(422, 'dev.error.password_short');
+            return $this->signedOutPage(422, 'dev.error.password_short', code: $code);
         }
         // Accepted only now that the Setup code is right.
         $probes = SelfCheck::parse($request->form['probes'] ?? '');
         if ($probes === null) {
-            return $this->signedOutPage(422, 'dev.error.probes');
+            return $this->signedOutPage(422, 'dev.error.probes', code: $code);
         }
         $findings = [...$this->selfCheck->runServer(), ...$this->selfCheck->runBrowser($probes)];
         if (SelfCheck::failed($findings)) {
-            return $this->signedOutPage(422, 'dev.error.selfcheck', findings: $findings);
+            return $this->signedOutPage(422, 'dev.error.selfcheck', findings: $findings, code: $code);
         }
         $firstRun = $this->passwordHash() === null;
         $this->setPassword($password);
@@ -166,6 +180,23 @@ final class DeveloperArea
         }
 
         return $response;
+    }
+
+    /** @return string|Response the posted Setup code when it is right, else the page that refuses it */
+    private function checkedSetupCode(Request $request): string|Response
+    {
+        if (!$this->setupCode->pending()) {
+            return Response::redirect($request->basePath . 'dev/');
+        }
+        $code = $request->form['code'] ?? '';
+        if (!$this->setupCode->matches($code)) {
+            $this->throttle->fail($request->ip);
+            $this->log->write('warning', 'roots', 'setup.failed', 'Wrong Setup code', ['ip' => $request->ip]);
+
+            return $this->signedOutPage(422, 'dev.error.code');
+        }
+
+        return $code;
     }
 
     private function signIn(Request $request): Response
@@ -250,15 +281,16 @@ final class DeveloperArea
     /**
      * @param array<string, string|int> $errorParams
      * @param list<Finding> $findings the Self-check that refused setup
+     * @param string|null $code a right Setup code: the page is the Self-check step
      */
-    private function signedOutPage(int $status, ?string $error = null, array $errorParams = [], array $findings = []): Response
+    private function signedOutPage(int $status, ?string $error = null, array $errorParams = [], array $findings = [], ?string $code = null): Response
     {
         $vars = ['error' => $error, 'errorParams' => $errorParams, 'canSignIn' => $this->passwordHash() !== null];
         if (!$this->setupCode->pending()) {
             return Pages::html($this->template, $status, 'signin', $vars);
         }
 
-        return Pages::html($this->template, $status, 'setup', $vars + ['findings' => $findings, 'probes' => $this->selfCheck->probes()]);
+        return Pages::html($this->template, $status, 'setup', $vars + ['findings' => $findings, 'code' => $code, 'probes' => $code === null ? null : $this->selfCheck->probes()]);
     }
 
     /** @param array<string, string|int> $errorParams */

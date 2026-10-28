@@ -17,6 +17,7 @@ test.beforeEach(async ({ page }) => {
   await page.goto('dev/');
   const setupCodeFile = inContainer(`cat "$(php -r "define('INNESTO_ROOTS', true); echo require '/var/www/html/innesto/data-path.php';")/setup-code.php"`);
   await page.getByLabel('Setup code').fill(/Setup code: (\S+)/.exec(setupCodeFile)[1]);
+  await page.getByRole('button', { name: 'Continue' }).click();
   await page.getByLabel('New Developer password').fill(password);
   await page.getByRole('button', { name: 'Set the password and sign in' }).click();
   await page.getByLabel('Site URL', { exact: true }).fill('https://www.example.com/');
