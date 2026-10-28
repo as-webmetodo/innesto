@@ -46,6 +46,7 @@ return [
     'dev.config.error' => 'Questi campi non sono validi:',
     'dev.config.warn.profile' => 'Il Business profile non ha nome o indirizzo, quindi non viene emesso alcun markup Schema.org.',
     'dev.config.warn.site_url' => 'Il Site URL è ancora quello predefinito, la radice di questo server.',
+    'dev.config.warn.uncovered' => 'Non tutti i Module attivi coprono questi locale, quindi non si possono più abilitare: {locales}.',
     'dev.config.shared' => 'Shared config',
     'dev.config.site_url' => 'Site URL',
     'dev.config.timezone' => 'Install timezone (il fuso iniziale dei nuovi Schedule)',

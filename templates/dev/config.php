@@ -10,14 +10,15 @@ defined('INNESTO_ROOTS') || exit;
  * @var callable(string): string $e @var callable(string, array<string, string|int>=): string $t @var string $csrf
  * @var list<string> $errors @var array<string, mixed> $shared @var array{max_age: string, extra_origins: string} $settings
  * @var bool $confirmed @var bool $incompleteProfile @var bool $defaultSiteUrl @var string $siteOrigin
- * @var list<string> $types @var list<string> $locales @var list<string> $timezones
+ * @var list<string> $types @var list<string> $locales @var list<string> $uncovered @var list<string> $timezones
  */
 $value = static fn (string $field): string => is_string($shared[$field] ?? null) ? $shared[$field] : '';
 $enabled = is_array($shared['enabled_locales'] ?? null) ? $shared['enabled_locales'] : [];
 $text = static fn (string $field, string $autocomplete = 'off', string $type = 'text'): string => '<label>' . $e($t("dev.config.$field"))
     . ' <input type="' . $type . '" id="' . $field . '" name="' . $field . '" value="' . $e($value($field)) . '" autocomplete="' . $autocomplete . '"></label>';
-/** @param list<string> $options */
+/** @param list<string> $options a value outside them selects an empty option, so nothing is chosen silently */
 $select = static fn (string $field, array $options): string => '<label>' . $e($t("dev.config.$field")) . ' <select id="' . $field . '" name="' . $field . "\">\n"
+    . (in_array($value($field), $options, true) ? '' : "<option value=\"\" selected></option>\n")
     . implode('', array_map(static fn (string $option): string => '<option value="' . $e($option) . '"' . ($option === $value($field) ? ' selected' : '') . '>' . $e($option) . "</option>\n", $options))
     . '</select></label>';
 ?>
@@ -39,6 +40,9 @@ $select = static fn (string $field, array $options): string => '<label>' . $e($t
 <?php endif ?>
 <?php if (!$confirmed) : ?>
 <p><?= $e($t('dev.config.confirm')) ?></p>
+<?php endif ?>
+<?php if ($uncovered !== []) : ?>
+<p><?= $e($t('dev.config.warn.uncovered', ['locales' => implode(', ', $uncovered)])) ?></p>
 <?php endif ?>
 <?php if ($incompleteProfile) : ?>
 <p><?= $e($t('dev.config.warn.profile')) ?></p>

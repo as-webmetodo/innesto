@@ -109,6 +109,7 @@ final class ConfigScreen
             'siteOrigin' => $config->siteOrigin(),
             'types' => SharedConfig::TYPES,
             'locales' => $this->locales,
+            'uncovered' => array_values(array_diff($shared['enabled_locales'], $this->locales)),
             'timezones' => $timezones,
         ]);
     }

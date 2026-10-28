@@ -49,6 +49,7 @@ return [
     'dev.config.error' => 'These fields are not valid:',
     'dev.config.warn.profile' => 'The Business profile has no name or address, so no Schema.org markup is emitted.',
     'dev.config.warn.site_url' => 'The Site URL is still the default, the root of this server.',
+    'dev.config.warn.uncovered' => 'Not every Active Module covers these locales, so they can no longer be enabled: {locales}.',
     'dev.config.shared' => 'Shared config',
     'dev.config.site_url' => 'Site URL',
     'dev.config.timezone' => 'Install timezone (the starting timezone of new Schedules)',

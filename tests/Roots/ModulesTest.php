@@ -359,3 +359,20 @@ test('a Store left by an interrupted activation never Halts an Uploaded Module',
         ->and(moduleStore($install, 'in.hours')->schemaVersion())->toBe(1)
         ->and(moduleStore($install, 'in.hours')->get('schedules', 'main'))->not->toBeNull();
 });
+
+test('a stored locale an Active Module does not cover is flagged, and the Default locale is never changed silently', function (): void {
+    $install = install();
+    uploadModules($install, FAKE_MODULES . '/acme.probe');
+    $token = completeSetup($install);
+    postConfig($install, $token, ['locale_en-GB' => 'on', 'default_locale' => 'en-GB'] + SHARED_FORM);
+    devPost($install, $token, ['action' => 'activate', 'module' => 'acme.probe']);
+
+    $page = devPage($install, $token, ['screen' => 'config'])->body;
+    // What a browser submits with nothing chosen in the Default locale.
+    $saved = postConfig($install, $token, ['locale_en-GB' => 'on', 'default_locale' => ''] + SHARED_FORM);
+
+    expect($page)->toContain('Not every Active Module covers these locales, so they can no longer be enabled: en-GB.')
+        ->and(preg_match('~<select id="default_locale" name="default_locale">\s*<option value="" selected>~', $page))->toBe(1)
+        ->and($saved->status)->toBe(422)
+        ->and(Innesto\Roots\SharedConfig::fromStore(contentStore($install), 'https://example.com')->defaultLocale)->toBe('en-GB');
+});
