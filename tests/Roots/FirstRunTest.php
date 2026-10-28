@@ -117,21 +117,38 @@ test('when <roots> is not writable, the page shows the data-path.php to upload',
         ->and($response->body)->toContain(htmlspecialchars("defined('INNESTO_ROOTS') || exit;"));
 });
 
-test('Roots\' Stores start on guarded files and move to SQLite when setup completes, if it is available', function (): void {
+test('Roots\' Stores start on guarded files and move to SQLite on the request after setup, if it is available', function (): void {
     $install = install();
     $install['app']->handle(request('GET', 'dev'));
-    $before = [is_file(dataPath($install) . '/roots-content.php'), is_file(dataPath($install) . '/roots-runtime.php')];
+    $data = dataPath($install);
+    $before = [is_file("$data/roots-content.php"), is_file("$data/roots-runtime.php")];
 
     $token = completeSetup($install);
+    $afterSetup = [is_file("$data/roots-content.php"), is_file("$data/roots-to-sqlite.php")];
+    $page = signedInPage($install, $token);
 
-    [$backend, $other] = extension_loaded('pdo_sqlite') ? ['sqlite', 'php'] : ['php', 'sqlite'];
     expect($before)->toBe([true, true])
-        ->and(is_file(dataPath($install) . "/roots-content.$backend"))->toBeTrue()
-        ->and(is_file(dataPath($install) . "/roots-runtime.$backend"))->toBeTrue()
-        ->and([...glob(dataPath($install) . "/roots-content.$other*") ?: [], ...glob(dataPath($install) . "/roots-runtime.$other*") ?: []])->toBe([])
+        // The setup request itself never moves them: its own objects hold the file Stores.
+        ->and($afterSetup)->toBe([true, true])
+        ->and(is_file("$data/roots-content.sqlite"))->toBeTrue()
+        ->and(is_file("$data/roots-runtime.sqlite"))->toBeTrue()
+        ->and([...glob("$data/roots-content.php*") ?: [], ...glob("$data/roots-runtime.php*") ?: [], ...glob("$data/roots-to-sqlite.php") ?: []])->toBe([])
         // The password and the session moved with the Stores.
-        ->and(signedInPage($install, $token)->body)->toContain('value="signout"');
-});
+        ->and($page->body)->toContain('value="signout"');
+})->skip(fn (): bool => !extension_loaded('pdo_sqlite'), 'needs SQLite');
+
+test('a write after setup\'s last step, such as a fault counted at shutdown, moves to SQLite too', function (): void {
+    $install = install();
+    $token = completeSetup($install);
+    // What the setup request's own FaultFence would write after the response.
+    $late = Innesto\Roots\Store\FileStore::open(dataPath($install) . '/roots-runtime.php', ['schema' => 1, 'collections' => ['faults' => ['fields' => []]]]);
+    $late->put('faults', ['id' => 'in.hours', 'count' => 1, 'message' => 'late', 'time' => '2026-10-27T10:00:00Z']);
+
+    signedInPage($install, $token);
+
+    expect(is_file(dataPath($install) . '/roots-runtime.php'))->toBeFalse()
+        ->and(rootsStores($install)->runtime->get('faults', 'in.hours')['message'] ?? null)->toBe('late');
+})->skip(fn (): bool => !extension_loaded('pdo_sqlite'), 'needs SQLite');
 
 test('Roots\' Stores use guarded files in a Data directory inside the webroot', function (): void {
     $install = install();

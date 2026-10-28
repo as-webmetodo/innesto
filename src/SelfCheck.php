@@ -176,8 +176,8 @@ final class SelfCheck
 
     /**
      * At the end of the first setup: records why the backend is what it is
-     * and moves Roots' Stores to SQLite when that is allowed. It must be the
-     * request's last write.
+     * and, when SQLite is allowed, has the next request move Roots' Stores
+     * there.
      *
      * @param BrowserResults $results
      */
@@ -186,7 +186,7 @@ final class SelfCheck
         $reason = $this->backendReason($results, $files);
         $this->stores->runtime->put('health', ['id' => 'backend', 'reason' => $reason]);
         if ($reason === 'sqlite' && !$this->stores->sqlite) {
-            $this->stores->moveToSqlite();
+            $this->stores->moveToSqliteOnNextOpen();
         }
     }
 

@@ -18,9 +18,9 @@ use Throwable;
  * Roots' two Stores: content (credentials, the Shared config, the Roots
  * settings and each Module's state; its revision feeds the ETag) and runtime
  * (sessions, throttling, Module faults and the Self-check; it never does), and one Store per
- * Module on the same backend. Roots' Stores start on guarded files; the first
- * setup moves them to SQLite when the Self-check allows it, and the backend
- * then stays fixed.
+ * Module on the same backend. Roots' Stores start on guarded files; when the
+ * Self-check allows it, the first setup has the next request move them to
+ * SQLite, and the backend then stays fixed.
  *
  * @phpstan-import-type StoreSchema from Store
  */
@@ -34,6 +34,9 @@ final class RootsStores
         'faults' => ['fields' => []],
         'health' => ['fields' => []],
     ]];
+
+    /** Left by the first setup when Roots' Stores are to move to SQLite. */
+    private const TO_SQLITE = 'roots-to-sqlite.php';
 
     private function __construct(public readonly Store $content, public readonly Store $runtime, private readonly string $dir, public readonly bool $sqlite)
     {
@@ -74,6 +77,7 @@ final class RootsStores
     public static function open(DataDirectory $data): self
     {
         $base = "$data->path/roots-content";
+        is_file("$data->path/" . self::TO_SQLITE) && self::moveToSqlite($data->path);
 
         return is_file("$base.sqlite")
             ? new self(SqliteStore::open("$base.sqlite", self::CONTENT), SqliteStore::open("$data->path/roots-runtime.sqlite", self::RUNTIME), $data->path, true)
@@ -81,31 +85,60 @@ final class RootsStores
     }
 
     /**
-     * Copies Roots' two Stores from guarded files into SQLite and removes the
-     * files. Only the first setup does this, before any Module has a Store,
-     * and as the last write of its request. The content Store moves last: its
-     * SQLite file is what open() goes by.
+     * Has the next open() move Roots' Stores from guarded files to SQLite.
+     * The move waits for a new request because this one's objects (sessions,
+     * the fault fence, the shutdown hook) keep writing to the file Stores.
      */
-    public function moveToSqlite(): void
+    public function moveToSqliteOnNextOpen(): void
     {
         $this->sqlite && throw new LogicException('Roots\' Stores are already on SQLite');
-        foreach ([['roots-runtime', self::RUNTIME, $this->runtime], ['roots-content', self::CONTENT, $this->content]] as [$name, $schema, $from]) {
-            $temp = "$this->dir/$name.sqlite.new";
-            is_file($temp) && unlink($temp);
-            $to = SqliteStore::open($temp, $schema);
-            $to->transaction(static function () use ($schema, $from, $to): void {
-                foreach (array_keys($schema['collections']) as $collection) {
-                    foreach ($from->list($collection) as $document) {
-                        $to->put($collection, $document);
-                    }
-                }
-            });
-            rename($temp, "$this->dir/$name.sqlite");
+        file_put_contents("$this->dir/" . self::TO_SQLITE, "<?php exit; ?>\n");
+    }
+
+    /**
+     * Copies Roots' two Stores into SQLite, then removes the files and the
+     * marker, all under a lock on the marker, so concurrent requests move them
+     * once. The content Store moves last: its SQLite file is what open() goes
+     * by, so a move cut short is redone from the files.
+     */
+    private static function moveToSqlite(string $dir): void
+    {
+        $marker = fopen("$dir/" . self::TO_SQLITE, 'r');
+        if ($marker === false) {
+            return;
         }
-        foreach (['roots-runtime', 'roots-content'] as $name) {
-            foreach (["$this->dir/$name.php", "$this->dir/$name.php.lock"] as $file) {
-                is_file($file) && unlink($file);
+        try {
+            flock($marker, LOCK_EX);
+            // Another request may have moved them while this one waited.
+            clearstatcache(true, "$dir/" . self::TO_SQLITE);
+            if (!is_file("$dir/" . self::TO_SQLITE)) {
+                return;
             }
+            if (!is_file("$dir/roots-content.sqlite")) {
+                foreach (['roots-runtime' => self::RUNTIME, 'roots-content' => self::CONTENT] as $name => $schema) {
+                    $from = FileStore::open("$dir/$name.php", $schema);
+                    $temp = "$dir/$name.sqlite.new";
+                    is_file($temp) && unlink($temp);
+                    $to = SqliteStore::open($temp, $schema);
+                    $to->transaction(static function () use ($schema, $from, $to): void {
+                        foreach (array_keys($schema['collections']) as $collection) {
+                            foreach ($from->list($collection) as $document) {
+                                $to->put($collection, $document);
+                            }
+                        }
+                    });
+                    rename($temp, "$dir/$name.sqlite");
+                }
+            }
+            foreach (['roots-runtime', 'roots-content'] as $name) {
+                foreach (["$dir/$name.php", "$dir/$name.php.lock"] as $file) {
+                    is_file($file) && unlink($file);
+                }
+            }
+            unlink("$dir/" . self::TO_SQLITE);
+        } finally {
+            flock($marker, LOCK_UN);
+            fclose($marker);
         }
     }
 
