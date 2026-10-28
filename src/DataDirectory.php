@@ -51,6 +51,10 @@ final class DataDirectory
         }
         $path = self::create($path, $webroot);
         file_put_contents($record, $contents, LOCK_EX);
+        // Within opcache.revalidate_freq, OPcache would still serve a replaced
+        // record's old path to the next request. With restrict_api set, the
+        // call would only raise a warning.
+        function_exists('opcache_invalidate') && ini_get('opcache.restrict_api') === '' && opcache_invalidate($record, true);
 
         return new self($path, self::isInside($path, $webroot), null);
     }
