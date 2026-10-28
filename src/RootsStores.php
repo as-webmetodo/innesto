@@ -13,15 +13,16 @@ use PDO;
 use Throwable;
 
 /**
- * Roots' two Stores: content (credentials; its revision feeds the ETag) and
- * runtime (sessions and throttling; it never does). The backend is chosen
- * when they are created and stays fixed: SQLite only with SQLite 3.27+ and a
- * Data directory outside the webroot, guarded files otherwise. #30's HTTP
+ * Roots' two Stores: content (credentials, the Shared config and the Roots
+ * settings; its revision feeds the ETag) and runtime (sessions and
+ * throttling; it never does). The backend is chosen when they are created
+ * and stays fixed: SQLite only with SQLite 3.27+ and a Data directory
+ * outside the webroot, guarded files otherwise. #30's HTTP
  * probe will let a proven-unreachable in-webroot directory use SQLite too.
  */
 final class RootsStores
 {
-    private const CONTENT = ['schema' => 1, 'collections' => ['credentials' => ['fields' => []]]];
+    private const CONTENT = ['schema' => 1, 'collections' => ['credentials' => ['fields' => []], 'config' => ['fields' => []]]];
 
     private const RUNTIME = ['schema' => 1, 'collections' => [
         'sessions' => ['fields' => ['area' => 'string', 'expires' => 'int']],

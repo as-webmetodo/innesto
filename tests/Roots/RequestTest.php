@@ -12,15 +12,16 @@ use Innesto\Roots\Http\Request;
  * @param array<string, mixed> $server
  * @param array<string, mixed> $post
  * @param array<string, mixed> $cookies
+ * @param array<string, mixed> $get
  */
-function fromGlobals(string $entry, array $server, array $post = [], array $cookies = []): Request
+function fromGlobals(string $entry, array $server, array $post = [], array $cookies = [], array $get = []): Request
 {
-    [$savedServer, $savedPost, $savedCookies] = [$_SERVER, $_POST, $_COOKIE];
-    [$_SERVER, $_POST, $_COOKIE] = [$server, $post, $cookies];
+    [$savedServer, $savedPost, $savedCookies, $savedGet] = [$_SERVER, $_POST, $_COOKIE, $_GET];
+    [$_SERVER, $_POST, $_COOKIE, $_GET] = [$server, $post, $cookies, $get];
     try {
         return Request::fromGlobals($entry);
     } finally {
-        [$_SERVER, $_POST, $_COOKIE] = [$savedServer, $savedPost, $savedCookies];
+        [$_SERVER, $_POST, $_COOKIE, $_GET] = [$savedServer, $savedPost, $savedCookies, $savedGet];
     }
 }
 
@@ -33,7 +34,7 @@ test('a stub entry point reads the request from the superglobals', function (): 
         'REMOTE_ADDR' => '203.0.113.7',
         'HTTP_ORIGIN' => 'https://example.com',
         'HTTP_ACCEPT_LANGUAGE' => 'it',
-    ], ['action' => 'signin', 'list' => ['not', 'a', 'string']], ['innesto_dev' => 'token']);
+    ], ['action' => 'signin', 'list' => ['not', 'a', 'string']], ['innesto_dev' => 'token'], ['screen' => 'config', 'list' => ['x']]);
 
     expect($request->method)->toBe('POST')
         ->and($request->entry)->toBe('dev')
@@ -43,6 +44,7 @@ test('a stub entry point reads the request from the superglobals', function (): 
         ->and($request->ip)->toBe('203.0.113.7')
         ->and($request->form)->toBe(['action' => 'signin'])
         ->and($request->cookies)->toBe(['innesto_dev' => 'token'])
+        ->and($request->query)->toBe(['screen' => 'config'])
         ->and($request->header('Origin'))->toBe('https://example.com')
         ->and($request->header('accept-language'))->toBe('it')
         ->and($request->header('referer'))->toBeNull();

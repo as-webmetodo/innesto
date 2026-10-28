@@ -14,9 +14,11 @@ use Innesto\Roots\Http\Response;
 use Innesto\Roots\Store\Store;
 
 /**
- * `dev/`: first run, sign-in, sign-out and password change. Every POST
- * passes the Origin/Referer check here; actions of a signed-in Developer
- * also need the session's CSRF token. Successful posts redirect (PRG).
+ * `dev/`: first run, sign-in, sign-out, password change and the config
+ * Screen, which a signed-in Developer sees until the Shared config is
+ * confirmed. Every POST passes the Origin/Referer check here; actions of a
+ * signed-in Developer also need the session's CSRF token. Successful posts
+ * redirect (PRG).
  */
 final class DeveloperArea
 {
@@ -34,6 +36,8 @@ final class DeveloperArea
 
     private readonly Throttle $throttle;
 
+    private readonly ConfigScreen $config;
+
     public function __construct(
         private readonly Store $content,
         Store $runtime,
@@ -46,6 +50,7 @@ final class DeveloperArea
         $this->resetMarker = "$dataDir/reset-marker";
         $this->sessions = new Sessions($runtime, $clock, 'dev', self::IDLE);
         $this->throttle = new Throttle($runtime, $clock, 'dev');
+        $this->config = new ConfigScreen($content, $log, $template);
     }
 
     public function handle(Request $request): Response
@@ -55,7 +60,11 @@ final class DeveloperArea
         $session = $this->sessions->find($token);
 
         if ($request->method !== 'POST') {
-            return $session === null ? $this->signedOutPage(200) : $this->homePage($session['csrf'], 200);
+            return match (true) {
+                $session === null => $this->signedOutPage(200),
+                ($request->query['screen'] ?? '') === 'config' || !$this->config->confirmed() => $this->config->page($request, $session['csrf']),
+                default => $this->homePage($session['csrf'], 200),
+            };
         }
         if (!self::sameOrigin($request)) {
             $this->log->write('warning', 'roots', 'csrf.refused', 'A Developer-area form came from another origin', ['ip' => $request->ip]);
@@ -80,6 +89,8 @@ final class DeveloperArea
         return match ($action) {
             'signout' => $this->signOut($request, $token),
             'password' => $this->changePassword($request, $session['csrf']),
+            'shared' => $this->config->saveShared($request, $session['csrf']),
+            'settings' => $this->config->saveSettings($request, $session['csrf']),
             default => Response::redirect($request->basePath . 'dev/'),
         };
     }

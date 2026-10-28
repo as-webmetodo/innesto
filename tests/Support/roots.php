@@ -29,10 +29,11 @@ function install(): array
  * @param array<string, string> $form
  * @param array<string, string> $cookies
  * @param array<string, string> $headers
+ * @param array<string, string> $query
  */
-function request(string $method, string $entry, array $form = [], array $cookies = [], array $headers = [], string $host = 'example.com', bool $https = true, string $ip = '203.0.113.7'): Request
+function request(string $method, string $entry, array $form = [], array $cookies = [], array $headers = [], string $host = 'example.com', bool $https = true, string $ip = '203.0.113.7', array $query = []): Request
 {
-    return new Request($method, $entry, '/innesto/', $host, $https, $ip, $form, $cookies, $headers);
+    return new Request($method, $entry, '/innesto/', $host, $https, $ip, $form, $cookies, $headers, $query);
 }
 
 /** @return list<array<string, mixed>> the JSON lines after the guard */
@@ -132,4 +133,14 @@ function csrfToken(array $install, string $token): string
 function loggedEvents(array $install): array
 {
     return array_column(logLines(dataPath($install) . '/roots-log.php'), 'event');
+}
+
+/**
+ * Roots' content Store, as later consumers open it.
+ *
+ * @param array{roots: string, webroot: string} $install
+ */
+function contentStore(array $install): Innesto\Roots\Store\Store
+{
+    return Innesto\Roots\RootsStores::open(Innesto\Roots\DataDirectory::locate($install['roots'], $install['webroot']))->content;
 }

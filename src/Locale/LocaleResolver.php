@@ -13,7 +13,7 @@ namespace Innesto\Roots\Locale;
 final class LocaleResolver
 {
     /** The locales Roots ships catalogues for. */
-    private const SHIPPED = ['it', 'en', 'en-GB'];
+    public const SHIPPED = ['it', 'en', 'en-GB'];
 
     /**
      * The explicit $lang when it is enabled (by region, then language),

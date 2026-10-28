@@ -18,6 +18,7 @@ final class Request
      * @param array<string, string> $form the POST fields
      * @param array<string, string> $cookies
      * @param array<string, string> $headers by lower-case name
+     * @param array<string, string> $query the URL's query parameters
      */
     public function __construct(
         public readonly string $method,
@@ -29,6 +30,7 @@ final class Request
         public readonly array $form = [],
         public readonly array $cookies = [],
         public readonly array $headers = [],
+        public readonly array $query = [],
     ) {
     }
 
@@ -55,6 +57,7 @@ final class Request
             self::strings($_POST),
             self::strings($_COOKIE),
             $headers,
+            self::strings($_GET),
         );
     }
 

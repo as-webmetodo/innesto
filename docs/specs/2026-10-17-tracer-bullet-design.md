@@ -514,6 +514,16 @@ The user decided these on 2026-10-28, after the review of #29:
 | Throttling the password change ([#14] throttles sign-in) | A wrong current password on the password change is a sign-in failure of `dev/`: it counts toward the throttle and is refused with `429` while the IP waits ([§3.6](#36-authentication-and-sessions)). |
 | How Roots knows a request is HTTPS ([#7]) | `HTTPS` set and not `off`, `REQUEST_SCHEME` of `https`, or `SERVER_PORT` 443. `X-Forwarded-Proto` and `X-Forwarded-SSL` are never read, since any client can send them; a host that reports HTTPS only through them fails the HTTPS rule and the browser-run HTTPS probe says why ([§3.11](#311-self-check)). |
 
+The user decided these on 2026-10-28, while #31 was implemented:
+
+| Gap | Decision |
+|---|---|
+| The Business profile's optional image ([#18]) | An absolute http(s) URL, not an upload, which would need file storage and `asset.php` ([§3.5](#35-shared-config-and-roots-settings)). |
+| The curated `LocalBusiness` subtypes ([#18]) | About twenty common small-business types in a constant, shown by their Schema.org names. |
+| Where the Developer confirms the Shared config (§2 step 4) | `dev/?screen=config`, with the Shared config and the Roots settings as two forms. Until the Shared config is first saved, a signed-in `dev/` shows that Screen instead of home. |
+| How the Install timezone is pre-filled from the browser ([#20]) | A small inline script selects `Intl`'s zone while the Shared config is unconfirmed; without JavaScript it stays `UTC`. |
+| The Self-check Warns for the Shared config, before the Self-check exists ([§3.11](#311-self-check)) | `SharedConfig` exposes both checks and the config Screen shows them; #30 grades them Warn. |
+
 Defaults this spec sets without a separate question. Each is cheap to change in the plan:
 
 - `<roots>/data-path.php` records the Data directory, so Roots finds it on every request and the Developer can move it ([§3.2](#32-data-directory-and-stores)).
