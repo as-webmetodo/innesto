@@ -25,7 +25,7 @@ final class Manifest
     public const ID = '/^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$/';
 
     /** Names a View option may not use: they are `view.php`'s own parameters. */
-    public const RESERVED_OPTIONS = ['module', 'view', 'lang', 'format', 'v'];
+    private const RESERVED_OPTIONS = ['module', 'view', 'lang', 'format', 'v'];
 
     /** The collection Roots adds to every Module Store for the Module's settings. */
     public const SETTINGS = 'settings';

@@ -29,7 +29,7 @@ use UnexpectedValueException;
 final class Modules
 {
     /** The Module API this Roots offers; a Manifest asks for it in `requires.roots_api`. */
-    public const ROOTS_API = 1;
+    private const ROOTS_API = 1;
 
     public const UPLOADED = 'uploaded';
 
