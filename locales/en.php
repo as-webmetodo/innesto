@@ -91,6 +91,7 @@ return [
     'dev.modules.error.state' => 'That action does not apply to this Module now. Reload the page.',
     'dev.modules.error.confirm' => 'Tick the box to confirm that all its data is deleted.',
     'dev.modules.error.activate' => 'Activation failed and was undone: {message}',
+    'dev.modules.error.store' => 'Roots could not create the Module\'s data, so it stays Uploaded: {message}',
     'dev.modules.error.no_screen' => 'This Screen does not exist, or its Module is not Active.',
     'dev.modules.error.screen' => 'This Screen failed. The error is in the Roots log.',
 ];

@@ -88,6 +88,7 @@ return [
     'dev.modules.error.state' => 'Questa azione ora non vale per questo Module. Ricarica la pagina.',
     'dev.modules.error.confirm' => 'Spunta la casella per confermare che tutti i suoi dati vengono eliminati.',
     'dev.modules.error.activate' => 'L\'attivazione non è riuscita ed è stata annullata: {message}',
+    'dev.modules.error.store' => 'Roots non ha potuto creare i dati del Module, che resta Caricato (Uploaded): {message}',
     'dev.modules.error.no_screen' => 'Questa Screen non esiste, o il suo Module non è Attivo.',
     'dev.modules.error.screen' => 'Questa Screen non è riuscita. L\'errore è nel Roots log.',
 ];

@@ -390,3 +390,26 @@ test('a Screen that answers an empty 500 page on purpose is shown as it is, not 
         ->and($page->body)->not->toContain('This Screen failed')
         ->and(moduleSection(devPage($install, $token, ['screen' => 'modules'])->body, 'acme.probe'))->not->toContain('Errors:');
 });
+
+test('when Roots cannot create a Module\'s Store, Activate is refused as Roots\' error, not the Module\'s', function (): void {
+    $install = install();
+    uploadModules($install, ORARIO);
+    $token = confirmedDeveloper($install);
+    $data = dataPath($install);
+    // A directory where the Store's file should go: both backends fail to create it.
+    foreach (['sqlite', 'php'] as $extension) {
+        mkdir("$data/module-in.hours.$extension");
+    }
+
+    $refused = devPost($install, $token, ['action' => 'activate', 'module' => 'in.hours']);
+    $failed = array_values(array_filter(logLines("$data/roots-log.php"), static fn (array $line): bool => $line['event'] === 'module.store_failed'));
+
+    expect($refused->status)->toBe(422)
+        ->and($refused->body)->toContain('Roots could not create the Module&#039;s data')
+        ->and($failed)->toHaveCount(1)
+        ->and($failed[0]['source'] ?? null)->toBe('roots')
+        ->and(loggedEvents($install))->not->toContain('module.fault')
+        ->and(moduleStoreExists($install, 'in.hours'))->toBeFalse()
+        ->and(moduleSection(devPage($install, $token, ['screen' => 'modules'])->body, 'in.hours'))->toContain('Uploaded')
+        ->and(moduleSection(devPage($install, $token, ['screen' => 'modules'])->body, 'in.hours'))->not->toContain('Errors:');
+});

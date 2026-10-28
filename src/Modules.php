@@ -10,6 +10,7 @@ use Innesto\Roots\Locale\Catalogue;
 use Innesto\Roots\Locale\LocaleResolver;
 use Innesto\Roots\Store\Store;
 use LogicException;
+use RuntimeException;
 use Throwable;
 use UnexpectedValueException;
 
@@ -81,7 +82,7 @@ final class Modules
     /**
      * Activates Module $id from Uploaded (creating its Store and running
      * onActivate in one transaction of it) or from Inactive (with its Store).
-     * If anything throws, the new Store is removed and the Module stays Uploaded.
+     * If anything fails, the new Store is removed and the Module stays Uploaded.
      *
      * @param string $locale the Developer area's locale, for onActivate's Context
      * @return Halt|null why it was refused, or null when it is Active
@@ -97,25 +98,53 @@ final class Modules
             return $module['halt'] ?? ['dev.modules.error.state', []];
         }
         if ($module['state'] === self::UPLOADED) {
-            // A Store left by an activation that failed before recording its state.
-            $this->stores->deleteModule($id);
-            $activated = $this->fence->call($id, function () use ($id, $manifest, $locale): bool {
-                $store = $this->stores->module($id, $manifest->storeSchema());
-                $entry = $this->entry($manifest);
-                $context = $this->context($manifest, $store, Actor::Developer, $locale, null);
-                $store->transaction(static fn () => $entry->onActivate($context));
-
-                return true;
-            }, false);
-            if (!$activated) {
-                $this->stores->deleteModule($id);
-
-                return ['dev.modules.error.activate', ['message' => $this->fence->fault($id)['message'] ?? '']];
+            $refused = $this->createStore($manifest, $locale);
+            if ($refused !== null) {
+                return $refused;
             }
         }
         $this->stores->content->put('modules', ['id' => $id, 'state' => self::ACTIVE]);
         $this->discovered = null;
         $this->log->write('info', 'roots', 'module.activated', 'Module activated', ['module' => $id, 'from' => $module['state']]);
+
+        return null;
+    }
+
+    /**
+     * Creates $manifest's Module Store and runs its onActivate in one
+     * transaction of it; on any failure the Store is removed again. Only the
+     * Module's own code is fenced: a failure of Roots (creating or committing
+     * the Store) is Roots' error, never counted against the Module.
+     *
+     * @return Halt|null why activation failed, or null
+     */
+    private function createStore(Manifest $manifest, string $locale): ?array
+    {
+        $id = $manifest->id;
+        // A Store left by an activation that failed before recording its state.
+        $this->stores->deleteModule($id);
+        $rolledBack = new RuntimeException('onActivate failed');
+        try {
+            $store = $this->stores->module($id, $manifest->storeSchema());
+            $context = $this->context($manifest, $store, Actor::Developer, $locale, null);
+            $store->transaction(function () use ($manifest, $context, $rolledBack): void {
+                $done = $this->fence->call($manifest->id, function () use ($manifest, $context): bool {
+                    $this->entry($manifest)->onActivate($context);
+
+                    return true;
+                }, false);
+                // Thrown, so the transaction discards what onActivate wrote.
+                $done || throw $rolledBack;
+            });
+        } catch (Throwable $error) {
+            $this->stores->deleteModule($id);
+            if ($error === $rolledBack) {
+                return ['dev.modules.error.activate', ['message' => $this->fence->fault($id)['message'] ?? '']];
+            }
+            $this->log->write('error', 'roots', 'module.store_failed', 'Roots could not create the Module Store', ['module' => $id, 'error' => $error::class . ': ' . $error->getMessage()]);
+
+            return ['dev.modules.error.store', ['message' => $error->getMessage()]];
+        }
 
         return null;
     }
