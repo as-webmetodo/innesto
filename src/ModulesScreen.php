@@ -77,23 +77,23 @@ final class ModulesScreen
         $id = $this->request->query['module'] ?? '';
         $name = $this->request->query['screen'] ?? '';
         $method = $this->request->method === 'POST' ? 'POST' : 'GET';
-        $request = new ScreenRequest($method, array_diff_key($this->request->query, ['module' => true, 'screen' => true]), array_diff_key($this->request->form, ['csrf' => true]));
-        $result = $this->modules->screen($id, $name, $request, $this->template->locale, $this->csrf);
-        $manifest = $this->modules->runnable($id);
-        if ($result === null || $manifest === null) {
+        $manifest = $this->modules->developerScreen($id, $name);
+        if ($manifest === null) {
             return Pages::html($this->template, 404, 'message', ['title' => 'dev.title', 'text' => 'dev.modules.error.no_screen']);
         }
-        if ($result->screen !== null) {
+        $request = new ScreenRequest($method, array_diff_key($this->request->query, ['module' => true, 'screen' => true]), array_diff_key($this->request->form, ['csrf' => true]));
+        $result = $this->modules->screen($manifest, $name, $request, $this->template->locale, $this->csrf);
+        if ($result?->screen !== null) {
             return Response::redirect($this->request->basePath . 'dev/?' . http_build_query(['module' => $id, 'screen' => $result->screen] + $result->params));
         }
 
-        return Pages::html($this->template, $result->status, 'screen', [
+        return Pages::html($this->template, $result === null ? 500 : $result->status, 'screen', [
             'module' => $manifest->name,
             'id' => $id,
             'screens' => array_keys(array_filter($manifest->screens, static fn (string $side): bool => $side === 'developer')),
             'current' => $name,
-            // A fault leaves the page empty: Roots says so instead.
-            'content' => $result->status === 500 && $result->html === '' ? null : $result->html,
+            // A fault leaves nothing to show: Roots says so instead.
+            'content' => $result?->html,
         ]);
     }
 

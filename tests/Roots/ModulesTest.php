@@ -376,3 +376,17 @@ test('a stored locale an Active Module does not cover is flagged, and the Defaul
         ->and($saved->status)->toBe(422)
         ->and(Innesto\Roots\SharedConfig::fromStore(contentStore($install), 'https://example.com')->defaultLocale)->toBe('en-GB');
 });
+
+test('a Screen that answers an empty 500 page on purpose is shown as it is, not as a fault', function (): void {
+    $install = install();
+    uploadModules($install, FAKE_MODULES . '/acme.probe');
+    $token = confirmedDeveloper($install);
+    devPost($install, $token, ['action' => 'activate', 'module' => 'acme.probe']);
+
+    $page = devPage($install, $token, ['module' => 'acme.probe', 'screen' => 'empty']);
+
+    expect($page->status)->toBe(500)
+        ->and($page->body)->toContain('<a href="?screen=modules">Modules</a>')
+        ->and($page->body)->not->toContain('This Screen failed')
+        ->and(moduleSection(devPage($install, $token, ['screen' => 'modules'])->body, 'acme.probe'))->not->toContain('Errors:');
+});

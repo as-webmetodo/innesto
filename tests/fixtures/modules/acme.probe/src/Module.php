@@ -24,6 +24,9 @@ final class Module implements RootsModule
         if ($name === 'boom') {
             throw new RuntimeException('The probe exploded');
         }
+        if ($name === 'empty') {
+            return ScreenResult::page('', 500);
+        }
         if ($name === 'stray') {
             return ScreenResult::redirect('phone');
         }

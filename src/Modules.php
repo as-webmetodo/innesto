@@ -213,37 +213,34 @@ final class Modules
         return null;
     }
 
-    /**
-     * Runs Screen $name of Active Module $id inside the fault fence. A
-     * redirect must name one of the Module's developer Screens.
-     *
-     * @return ScreenResult|null null when the Module is not Active, is Halted
-     *     or has no such developer Screen; a fault gives an empty page with `500`
-     */
-    public function screen(string $id, string $name, ScreenRequest $request, string $locale, string $csrf): ?ScreenResult
+    /** The Manifest of Module $id when it is Active, not Halted and declares developer Screen $name, else null. */
+    public function developerScreen(string $id, string $name): ?Manifest
     {
-        $manifest = $this->runnable($id);
-        if ($manifest === null || ($manifest->screens[$name] ?? null) !== 'developer') {
-            return null;
-        }
+        $module = $this->all()[$id] ?? null;
+        $manifest = $module !== null && $module['state'] === self::ACTIVE && $module['halt'] === null ? $module['manifest'] : null;
 
-        return $this->fence->call($id, function () use ($manifest, $name, $request, $locale, $csrf): ScreenResult {
-            $store = $this->stores->module($manifest->id, $manifest->storeSchema());
-            $result = $this->entry($manifest)->screen($name, $this->context($manifest, $store, Actor::Developer, $locale, $csrf), $request);
+        return ($manifest?->screens[$name] ?? null) === 'developer' ? $manifest : null;
+    }
+
+    /**
+     * Runs developer Screen $name of $manifest's Module (see
+     * developerScreen()), fencing only the Module's own code. A redirect must
+     * name one of the Module's developer Screens.
+     *
+     * @return ScreenResult|null null when the Module's code threw
+     */
+    public function screen(Manifest $manifest, string $name, ScreenRequest $request, string $locale, string $csrf): ?ScreenResult
+    {
+        $context = $this->context($manifest, $this->stores->module($manifest->id, $manifest->storeSchema()), Actor::Developer, $locale, $csrf);
+
+        return $this->fence->call($manifest->id, function () use ($manifest, $name, $request, $context): ScreenResult {
+            $result = $this->entry($manifest)->screen($name, $context, $request);
             if ($result->screen !== null && ($manifest->screens[$result->screen] ?? null) !== 'developer') {
                 throw new LogicException("Screen $name redirected to $result->screen, which is not a developer Screen of $manifest->id");
             }
 
             return $result;
-        }, ScreenResult::page('', 500));
-    }
-
-    /** The Manifest of Module $id when it is Active and not Halted, else null. */
-    public function runnable(string $id): ?Manifest
-    {
-        $module = $this->all()[$id] ?? null;
-
-        return $module !== null && $module['state'] === self::ACTIVE && $module['halt'] === null ? $module['manifest'] : null;
+        }, null);
     }
 
     /** The Context of one call into $manifest's Module, with its $store: one connection, so a transaction sees its own writes. */
