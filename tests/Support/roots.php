@@ -144,3 +144,21 @@ function contentStore(array $install): Innesto\Roots\Store\Store
 {
     return Innesto\Roots\RootsStores::open(Innesto\Roots\DataDirectory::locate($install['roots'], $install['webroot']))->content;
 }
+
+const SHARED_FORM = [
+    'action' => 'shared', 'site_url' => 'https://www.example.com/', 'timezone' => 'Europe/Rome',
+    'locale_it' => 'on', 'locale_en' => 'on', 'default_locale' => 'it',
+    'name' => 'Forno Rossi', 'type' => 'Bakery', 'street_address' => 'Via Roma 1', 'postal_code' => '00184',
+    'locality' => 'Roma', 'region' => 'RM', 'country' => 'it', 'phone' => '+39 06 1234 567', 'url' => '', 'image' => 'https://www.example.com/forno.jpg',
+];
+
+/**
+ * Posts a config form of a signed-in Developer.
+ *
+ * @param array{app: Innesto\Roots\App} $install
+ * @param array<string, string> $form
+ */
+function postConfig(array $install, string $token, array $form): Innesto\Roots\Http\Response
+{
+    return $install['app']->handle(request('POST', 'dev', $form + ['csrf' => csrfToken($install, $token)], ['innesto_dev' => $token], ORIGIN));
+}

@@ -19,24 +19,6 @@ test('until the Shared config is confirmed, the Developer area opens on it, pre-
         ->and($page->body)->toContain('value="signout"');
 });
 
-const SHARED_FORM = [
-    'action' => 'shared', 'site_url' => 'https://www.example.com/', 'timezone' => 'Europe/Rome',
-    'locale_it' => 'on', 'locale_en' => 'on', 'default_locale' => 'it',
-    'name' => 'Forno Rossi', 'type' => 'Bakery', 'street_address' => 'Via Roma 1', 'postal_code' => '00184',
-    'locality' => 'Roma', 'region' => 'RM', 'country' => 'it', 'phone' => '+39 06 1234 567', 'url' => '', 'image' => 'https://www.example.com/forno.jpg',
-];
-
-/**
- * Posts a config form of a signed-in Developer.
- *
- * @param array{app: Innesto\Roots\App} $install
- * @param array<string, string> $form
- */
-function postConfig(array $install, string $token, array $form): Innesto\Roots\Http\Response
-{
-    return $install['app']->handle(request('POST', 'dev', $form + ['csrf' => csrfToken($install, $token)], ['innesto_dev' => $token], ORIGIN));
-}
-
 test('confirming the Shared config saves it, logs the change and bumps the content Store revision', function (): void {
     $install = install();
     $token = completeSetup($install);
@@ -144,6 +126,7 @@ test('invalid Roots settings are refused with 422', function (string $field, str
     'max-age not a number' => ['max_age', '5m'],
     'origin with a path' => ['extra_origins', 'https://example.net/page'],
     'not an origin' => ['extra_origins', 'example.net'],
+    '21 origins' => ['extra_origins', implode("\n", array_map(static fn (int $i): string => "https://p$i.example.net", range(1, 21)))],
     'port out of range' => ['extra_origins', 'https://example.net:65536'],
 ]);
 
@@ -171,3 +154,49 @@ test('the config Screen flags an incomplete Business profile and a default Site 
         ->and($after)->not->toContain('The Business profile has no name or address')
         ->and($after)->not->toContain('The Site URL is still the default');
 });
+
+test('a refused first save keeps the timezone the Developer chose', function (): void {
+    $install = install();
+    $token = completeSetup($install);
+
+    $response = postConfig($install, $token, ['site_url' => '/'] + SHARED_FORM);
+
+    expect($response->status)->toBe(422)
+        ->and($response->body)->toContain('<option value="Europe/Rome" selected>')
+        ->and($response->body)->not->toContain('Intl.DateTimeFormat()');
+});
+
+test('refused Roots settings come back as the Developer typed them', function (): void {
+    $install = install();
+    $token = completeSetup($install);
+
+    $response = postConfig($install, $token, ['action' => 'settings', 'max_age' => '5m', 'extra_origins' => 'example.net']);
+
+    expect($response->status)->toBe(422)
+        ->and($response->body)->toContain('name="max_age" min="1" max="60" value="5m"')
+        ->and($response->body)->toContain('name="extra_origins">example.net</textarea>');
+});
+
+test('an empty Shared config form names every required field', function (): void {
+    $install = install();
+    $token = completeSetup($install);
+
+    $response = postConfig($install, $token, ['action' => 'shared']);
+
+    expect($response->status)->toBe(422)
+        ->and(preg_match_all('/<li><a href="#([a-z_]+)"/', $response->body, $match))->toBe(4)
+        ->and($match[1])->toBe(['type', 'default_locale', 'timezone', 'site_url']);
+});
+
+test('values at the edge of each range are accepted', function (array $form): void {
+    /** @var array<string, string> $form a form from the dataset below */
+    $install = install();
+    $token = completeSetup($install);
+
+    expect(postConfig($install, $token, $form)->status)->toBe(303);
+})->with([
+    'max-age 1' => [['action' => 'settings', 'max_age' => '1', 'extra_origins' => '']],
+    'max-age 60' => [['action' => 'settings', 'max_age' => '60', 'extra_origins' => '']],
+    '20 origins' => [['action' => 'settings', 'max_age' => '5', 'extra_origins' => implode("\n", array_map(static fn (int $i): string => "https://p$i.example.net", range(1, 20)))]],
+    'name of 200 characters' => [['name' => str_repeat('à', 200)] + SHARED_FORM],
+]);

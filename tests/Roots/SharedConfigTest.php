@@ -59,3 +59,28 @@ test('the Site URL written without the slash or in another case is still the def
 
     expect(SharedConfig::fromStore(contentStore($install), 'https://example.com')->siteUrlIsDefault())->toBeTrue();
 })->with(['https://example.com', 'https://Example.com/']);
+
+test('a Shared config the Store holds in a shape Roots never writes fails fast', function (): void {
+    $install = install();
+    $token = completeSetup($install);
+    postConfig($install, $token, SHARED_FORM);
+    $store = contentStore($install);
+    $stored = $store->get('config', 'shared_config');
+    expect($stored)->toBeArray();
+
+    $store->put('config', ['timezone' => 'Mars/Olympus'] + (array) $stored);
+
+    expect(fn () => SharedConfig::fromStore($store, 'https://example.com'))->toThrow(UnexpectedValueException::class);
+});
+
+test('a timezone tzdata keeps only as a backward-compatible name stays readable and selected', function (): void {
+    $install = install();
+    $token = completeSetup($install);
+
+    $saved = postConfig($install, $token, ['timezone' => 'Asia/Calcutta'] + SHARED_FORM);
+    $page = $install['app']->handle(request('GET', 'dev', cookies: ['innesto_dev' => $token], query: ['screen' => 'config']));
+
+    expect($saved->status)->toBe(303)
+        ->and($page->body)->toContain('<option value="Asia/Calcutta" selected>')
+        ->and(SharedConfig::fromStore(contentStore($install), 'https://example.com')->installTimezone)->toBe('Asia/Calcutta');
+});

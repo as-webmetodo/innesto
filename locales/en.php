@@ -43,7 +43,6 @@ return [
     'dev.home.signed_in' => 'You are signed in.',
     'dev.signout' => 'Sign out',
     'dev.config.title' => 'Shared config and Roots settings',
-    'dev.config.link' => 'Shared config and Roots settings',
     'dev.config.confirm' => 'Confirm the Shared config: every Module reads it. You can change it later.',
     'dev.config.confirm.submit' => 'Confirm the Shared config',
     'dev.config.save' => 'Save',

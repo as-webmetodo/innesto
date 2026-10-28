@@ -40,7 +40,6 @@ return [
     'dev.home.signed_in' => 'Hai effettuato l\'accesso.',
     'dev.signout' => 'Esci',
     'dev.config.title' => 'Shared config e Roots settings',
-    'dev.config.link' => 'Shared config e Roots settings',
     'dev.config.confirm' => 'Conferma la Shared config: ogni Module la legge. Puoi cambiarla in seguito.',
     'dev.config.confirm.submit' => 'Conferma la Shared config',
     'dev.config.save' => 'Salva',

@@ -36,8 +36,6 @@ final class DeveloperArea
 
     private readonly Throttle $throttle;
 
-    private readonly ConfigScreen $config;
-
     public function __construct(
         private readonly Store $content,
         Store $runtime,
@@ -50,7 +48,6 @@ final class DeveloperArea
         $this->resetMarker = "$dataDir/reset-marker";
         $this->sessions = new Sessions($runtime, $clock, 'dev', self::IDLE);
         $this->throttle = new Throttle($runtime, $clock, 'dev');
-        $this->config = new ConfigScreen($content, $log, $template);
     }
 
     public function handle(Request $request): Response
@@ -58,11 +55,12 @@ final class DeveloperArea
         $this->issueSetupCodeIfNeeded();
         $token = $request->cookies[self::COOKIE] ?? null;
         $session = $this->sessions->find($token);
+        $config = $session === null ? null : new ConfigScreen($this->content, $this->log, $this->template, $request, $session['csrf']);
 
         if ($request->method !== 'POST') {
             return match (true) {
-                $session === null => $this->signedOutPage(200),
-                ($request->query['screen'] ?? '') === 'config' || !$this->config->confirmed() => $this->config->page($request, $session['csrf']),
+                $session === null || $config === null => $this->signedOutPage(200),
+                ($request->query['screen'] ?? '') === 'config' || !$config->confirmed() => $config->page(),
                 default => $this->homePage($session['csrf'], 200),
             };
         }
@@ -80,7 +78,7 @@ final class DeveloperArea
 
             return $action === 'setup' ? $this->setup($request) : $this->signIn($request);
         }
-        if ($session === null || $token === null || !hash_equals($session['csrf'], $request->form['csrf'] ?? '')) {
+        if ($session === null || $config === null || $token === null || !hash_equals($session['csrf'], $request->form['csrf'] ?? '')) {
             $this->log->write('warning', 'roots', 'csrf.refused', 'A Developer-area form had no valid CSRF token', ['ip' => $request->ip]);
 
             return $this->forbidden();
@@ -89,8 +87,8 @@ final class DeveloperArea
         return match ($action) {
             'signout' => $this->signOut($request, $token),
             'password' => $this->changePassword($request, $session['csrf']),
-            'shared' => $this->config->saveShared($request, $session['csrf']),
-            'settings' => $this->config->saveSettings($request, $session['csrf']),
+            'shared' => $config->saveShared(),
+            'settings' => $config->saveSettings(),
             default => Response::redirect($request->basePath . 'dev/'),
         };
     }

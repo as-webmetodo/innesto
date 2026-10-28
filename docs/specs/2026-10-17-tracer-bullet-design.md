@@ -523,6 +523,9 @@ The user decided these on 2026-10-28, while #31 was implemented:
 | Where the Developer confirms the Shared config (§2 step 4) | `dev/?screen=config`, with the Shared config and the Roots settings as two forms. Until the Shared config is first saved, a signed-in `dev/` shows that Screen instead of home. |
 | How the Install timezone is pre-filled from the browser ([#20]) | A small inline script selects `Intl`'s zone while the Shared config is unconfirmed; without JavaScript it stays `UTC`. |
 | The Self-check Warns for the Shared config, before the Self-check exists ([§3.11](#311-self-check)) | `SharedConfig` exposes both checks and the config Screen shows them; #30 grades them Warn. |
+| What "every save bumps the revision" means (#31 says every save, [§3.5](#35-shared-config-and-roots-settings) says any change) | Only a save that changes a field writes, logs the changed fields and bumps the content Store revision, so an unchanged save leaves the `ETag` alone. |
+| How strictly the Shared config and Roots settings are validated | Business profile text up to 200 characters without control characters; country as ISO 3166-1 alpha-2; phone as digits with `+ ( ) . / -` and spaces; URLs absolute http(s) in printable ASCII (IDN hosts in punycode); at most 20 extra origins, stored as browsers send them (lower case, no default port); any IANA zone tzdata knows, backward-compatible names included, so a later rename keeps a stored zone valid. A stored document that fails these checks fails fast. |
+| What the two Shared config checks mean | An incomplete Business profile has no name, street address or city. The Site URL is still the default when it equals the root of Roots' origin, ignoring a trailing slash and case. |
 
 Defaults this spec sets without a separate question. Each is cheap to change in the plan:
 

@@ -10,7 +10,7 @@ defined('INNESTO_ROOTS') || exit;
 ?>
 <h1><?= $e($t('dev.home.title')) ?></h1>
 <p><?= $e($t('dev.home.signed_in')) ?></p>
-<p><a href="?screen=config"><?= $e($t('dev.config.link')) ?></a></p>
+<p><a href="?screen=config"><?= $e($t('dev.config.title')) ?></a></p>
 <form method="post">
 <input type="hidden" name="action" value="signout">
 <input type="hidden" name="csrf" value="<?= $e($csrf) ?>">
