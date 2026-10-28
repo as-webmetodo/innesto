@@ -241,6 +241,17 @@ test('a developer Screen renders inside Roots\' shell with the Module\'s Context
         ->and($page->body)->toContain('name="csrf" value="' . csrfToken($install, $token) . '"');
 });
 
+test('a Module that neither requires nor optionally uses mail gets no mail service', function (): void {
+    $install = install();
+    uploadModules($install, FAKE_MODULES . '/acme.probe');
+    $manifest = $install['roots'] . '/modules/acme.probe/module.php';
+    file_put_contents($manifest, str_replace("'optional' => ['mail']", "'optional' => []", (string) file_get_contents($manifest)));
+    $token = confirmedDeveloper($install);
+    devPost($install, $token, ['action' => 'activate', 'module' => 'acme.probe']);
+
+    expect(devPage($install, $token, ['module' => 'acme.probe', 'screen' => 'echo'])->body)->toContain('<dd id="mail">no</dd>');
+});
+
 test('a Screen form is posted through Roots\' CSRF check, then redirects to a Screen of the Module', function (): void {
     $install = install();
     uploadModules($install, FAKE_MODULES . '/acme.probe');
