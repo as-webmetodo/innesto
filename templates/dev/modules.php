@@ -9,7 +9,7 @@ defined('INNESTO_ROOTS') || exit;
 /**
  * @var callable(string): string $e @var callable(string, array<string, string|int>=): string $t @var string $csrf
  * @var array{0: string, 1: array<string, string|int>}|null $error
- * @var list<array{id: string, name: string, state: Innesto\Roots\ModuleState, halt: array{0: string, 1: array<string, string|int>}|null, fault: array{count: int, message: string, time: string}|null, gap: list<string>, screens: list<string>}> $modules
+ * @var list<array{id: string, name: string, state: Innesto\Roots\ModuleState, halt: array{0: string, 1: array<string, string|int>}|null, fault: array{count: int, message: string, time: string}|null, uncovered: list<string>, screens: list<string>}> $modules
  */
 $action = static fn (string $action, string $id, string $label, string $extra = ''): string => '<form method="post">'
     . '<input type="hidden" name="action" value="' . $action . '">'
@@ -32,8 +32,8 @@ $action = static fn (string $action, string $id, string $label, string $extra = 
 <?php if ($module['halt'] !== null) : ?>
 <p><?= $e($t('dev.modules.halted')) ?> <?= $e($t($module['halt'][0], $module['halt'][1])) ?></p>
 <?php endif ?>
-<?php if ($module['gap'] !== []) : ?>
-<p><?= $e($t('dev.modules.gap', ['locales' => implode(', ', $module['gap'])])) ?></p>
+<?php if ($module['uncovered'] !== []) : ?>
+<p><?= $e($t('dev.modules.uncovered', ['locales' => implode(', ', $module['uncovered'])])) ?></p>
 <?php endif ?>
 <?php if ($module['fault'] !== null) : ?>
 <p><?= $e($t('dev.modules.fault', ['count' => $module['fault']['count'], 'time' => $module['fault']['time'], 'message' => $module['fault']['message']])) ?></p>

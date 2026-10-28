@@ -12,8 +12,10 @@ use Innesto\Roots\Http\Response;
 /**
  * `dev/?screen=modules` and the Modules' own Screens for one signed-in
  * request: the Modules list with each one's state, Halted reason, error count
- * and locale gaps, the lifecycle actions, and `dev/?module=<id>&screen=<name>`
+ * and uncovered locales, the lifecycle actions, and `dev/?module=<id>&screen=<name>`
  * inside Roots' shell. A refused action re-renders the list with `422`.
+ *
+ * @phpstan-import-type Halt from Modules
  */
 final class ModulesScreen
 {
@@ -27,7 +29,7 @@ final class ModulesScreen
     ) {
     }
 
-    /** @param array{0: string, 1: array<string, string|int>}|null $error a catalogue key and its parameters */
+    /** @param Halt|null $error why an action was refused */
     public function page(int $status = 200, ?array $error = null): Response
     {
         $rows = [];
@@ -38,7 +40,7 @@ final class ModulesScreen
                 'state' => $module['state'],
                 'halt' => $module['halt'],
                 'fault' => $this->fence->fault($id),
-                'gap' => $module['manifest'] === null ? [] : array_values(array_diff($this->shared->enabledLocales, $this->modules->covered($id))),
+                'uncovered' => $module['manifest'] === null ? [] : array_values(array_diff($this->shared->enabledLocales, $this->modules->covered($id))),
                 'screens' => $this->modules->runnable($id)?->developerScreens() ?? [],
             ];
         }
@@ -56,7 +58,9 @@ final class ModulesScreen
 
     public function deactivate(): Response
     {
-        return $this->modules->deactivate($this->request->form['module'] ?? '') ? $this->backToList() : $this->page(422, ['dev.modules.error.state', []]);
+        $refused = $this->modules->deactivate($this->request->form['module'] ?? '');
+
+        return $refused === null ? $this->backToList() : $this->page(422, $refused);
     }
 
     /** Only with the confirmation box ticked. */
@@ -66,7 +70,9 @@ final class ModulesScreen
             return $this->page(422, ['dev.modules.error.confirm', []]);
         }
 
-        return $this->modules->deleteData($this->request->form['module'] ?? '') ? $this->backToList() : $this->page(422, ['dev.modules.error.state', []]);
+        $refused = $this->modules->deleteData($this->request->form['module'] ?? '');
+
+        return $refused === null ? $this->backToList() : $this->page(422, $refused);
     }
 
     /** A developer Screen of an Active Module, for a GET or an already checked POST. */

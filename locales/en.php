@@ -82,7 +82,7 @@ return [
     'dev.modules.halt.requires' => 'Unmet requirements: {unmet}.',
     'dev.modules.halt.schema' => 'Its data has schema version {store}, but the Module expects {manifest}. Deactivate it and delete its data, or upload the matching version.',
     'dev.modules.halt.store' => 'Its data cannot be read: {detail}',
-    'dev.modules.gap' => 'It has no text in these Enabled locales: {locales}.',
+    'dev.modules.uncovered' => 'It has no text in these Enabled locales: {locales}.',
     'dev.modules.fault' => 'Errors: {count}. Last, at {time}: {message}',
     'dev.modules.activate' => 'Activate',
     'dev.modules.deactivate' => 'Deactivate',

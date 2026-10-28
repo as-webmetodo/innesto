@@ -31,6 +31,9 @@ final class Modules
     /** The Module API this Roots offers; a Manifest asks for it in `requires.roots_api`. */
     private const ROOTS_API = 1;
 
+    /** A lifecycle action that does not apply to the Module's state. */
+    private const REFUSED = ['dev.modules.error.state', []];
+
     /** @var array<string, string> each loaded Module's namespace prefix and source directory */
     private static array $autoload = [];
 
@@ -44,7 +47,7 @@ final class Modules
         private readonly RootsLog $log,
         private readonly Clock $clock,
         /** Roots' catalogues: the formatter's names and patterns */
-        private readonly Catalogue $rootsCatalogue,
+        private readonly Catalogue $dates,
         /** Roots' origin, whose root is the default Site URL */
         private readonly string $origin,
     ) {
@@ -91,11 +94,11 @@ final class Modules
     {
         $module = $this->all()[$id] ?? null;
         if ($module === null || $module['state'] === ModuleState::Active) {
-            return ['dev.modules.error.state', []];
+            return self::REFUSED;
         }
         $manifest = $module['manifest'];
         if ($module['halt'] !== null || $manifest === null) {
-            return $module['halt'] ?? ['dev.modules.error.state', []];
+            return $module['halt'] ?? self::REFUSED;
         }
         if ($module['state'] === ModuleState::Uploaded) {
             $refused = $this->createStore($manifest, $locale);
@@ -170,39 +173,49 @@ final class Modules
         return null;
     }
 
-    /** Active → Inactive: nothing of it runs, its Store is kept. Halted Modules may be deactivated too. */
-    public function deactivate(string $id): bool
+    /**
+     * Active → Inactive: nothing of it runs, its Store is kept. Halted Modules may be deactivated too.
+     *
+     * @return Halt|null why it was refused, or null when it is Inactive
+     */
+    public function deactivate(string $id): ?array
     {
-        return $this->locked(fn (): bool => $this->deactivateLocked($id));
+        return $this->locked(fn (): ?array => $this->deactivateLocked($id));
     }
 
-    private function deactivateLocked(string $id): bool
+    /** @return Halt|null */
+    private function deactivateLocked(string $id): ?array
     {
         if (($this->all()[$id]['state'] ?? null) !== ModuleState::Active) {
-            return false;
+            return self::REFUSED;
         }
         $this->stores->content->put('modules', ['id' => $id, 'state' => ModuleState::Inactive->value]);
         $this->log->write('info', 'roots', 'module.deactivated', 'Module deactivated', ['module' => $id]);
 
-        return true;
+        return null;
     }
 
-    /** Inactive → Uploaded: the whole Store is removed. */
-    public function deleteData(string $id): bool
+    /**
+     * Inactive → Uploaded: the whole Store is removed.
+     *
+     * @return Halt|null why it was refused, or null when it is Uploaded
+     */
+    public function deleteData(string $id): ?array
     {
-        return $this->locked(fn (): bool => $this->deleteDataLocked($id));
+        return $this->locked(fn (): ?array => $this->deleteDataLocked($id));
     }
 
-    private function deleteDataLocked(string $id): bool
+    /** @return Halt|null */
+    private function deleteDataLocked(string $id): ?array
     {
         if (($this->all()[$id]['state'] ?? null) !== ModuleState::Inactive) {
-            return false;
+            return self::REFUSED;
         }
         $this->stores->deleteModule($id);
         $this->stores->content->delete('modules', $id);
         $this->log->write('info', 'roots', 'module.data_deleted', 'Module data deleted', ['module' => $id]);
 
-        return true;
+        return null;
     }
 
     /** @return list<string> the locales Roots and Module $id both ship catalogues for */
@@ -322,7 +335,7 @@ final class Modules
             $actor,
             $locale,
             $catalogue,
-            $this->rootsCatalogue,
+            $this->dates,
             new Template("$dir/templates", $catalogue, $locale),
             $this->log,
             in_array('mail', [...$manifest->capabilities, ...$manifest->optional], true) && Mail::available() ? new Mail() : null,

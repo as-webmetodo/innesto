@@ -79,7 +79,7 @@ return [
     'dev.modules.halt.requires' => 'Requisiti non soddisfatti: {unmet}.',
     'dev.modules.halt.schema' => 'I suoi dati hanno la versione di schema {store}, ma il Module si aspetta la {manifest}. Disattivalo ed elimina i suoi dati, o carica la versione corrispondente.',
     'dev.modules.halt.store' => 'I suoi dati non si possono leggere: {detail}',
-    'dev.modules.gap' => 'Non ha testi per questi Enabled locales: {locales}.',
+    'dev.modules.uncovered' => 'Non ha testi per questi Enabled locales: {locales}.',
     'dev.modules.fault' => 'Errori: {count}. Ultimo, alle {time}: {message}',
     'dev.modules.activate' => 'Attiva',
     'dev.modules.deactivate' => 'Disattiva',
