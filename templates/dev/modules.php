@@ -9,7 +9,7 @@ defined('INNESTO_ROOTS') || exit;
 /**
  * @var callable(string): string $e @var callable(string, array<string, string|int>=): string $t @var string $csrf
  * @var array{0: string, 1: array<string, string|int>}|null $error
- * @var list<array{id: string, name: string, state: string, halt: array{0: string, 1: array<string, string|int>}|null, fault: array{count: int, message: string, time: string}|null, gap: list<string>, screens: list<string>}> $modules
+ * @var list<array{id: string, name: string, state: Innesto\Roots\ModuleState, halt: array{0: string, 1: array<string, string|int>}|null, fault: array{count: int, message: string, time: string}|null, gap: list<string>, screens: list<string>}> $modules
  */
 $action = static fn (string $action, string $id, string $label, string $extra = ''): string => '<form method="post">'
     . '<input type="hidden" name="action" value="' . $action . '">'
@@ -28,7 +28,7 @@ $action = static fn (string $action, string $id, string $label, string $extra = 
 <?php foreach ($modules as $module) : ?>
 <section id="module-<?= $e($module['id']) ?>">
 <h2><?= $e($module['name']) ?> <small><?= $e($module['id']) ?></small></h2>
-<p><?= $e($t('dev.modules.state.' . $module['state'])) ?></p>
+<p><?= $e($t('dev.modules.state.' . $module['state']->value)) ?></p>
 <?php if ($module['halt'] !== null) : ?>
 <p><?= $e($t('dev.modules.halted')) ?> <?= $e($t($module['halt'][0], $module['halt'][1])) ?></p>
 <?php endif ?>
@@ -45,13 +45,13 @@ $action = static fn (string $action, string $id, string $label, string $extra = 
 <?php endforeach ?>
 </ul>
 <?php endif ?>
-<?php if ($module['state'] !== 'active' && $module['halt'] === null) : ?>
+<?php if ($module['state'] !== Innesto\Roots\ModuleState::Active && $module['halt'] === null) : ?>
 <?= $action('activate', $module['id'], 'dev.modules.activate') ?>
 <?php endif ?>
-<?php if ($module['state'] === 'active') : ?>
+<?php if ($module['state'] === Innesto\Roots\ModuleState::Active) : ?>
 <?= $action('deactivate', $module['id'], 'dev.modules.deactivate') ?>
 <?php endif ?>
-<?php if ($module['state'] === 'inactive') : ?>
+<?php if ($module['state'] === Innesto\Roots\ModuleState::Inactive) : ?>
 <?= $action('delete_data', $module['id'], 'dev.modules.delete', '<label><input type="checkbox" name="confirm" required> ' . $e($t('dev.modules.delete.confirm')) . '</label>') ?>
 <?php endif ?>
 </section>

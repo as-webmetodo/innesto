@@ -31,16 +31,10 @@ final class Modules
     /** The Module API this Roots offers; a Manifest asks for it in `requires.roots_api`. */
     private const ROOTS_API = 1;
 
-    public const UPLOADED = 'uploaded';
-
-    public const ACTIVE = 'active';
-
-    public const INACTIVE = 'inactive';
-
     /** @var array<string, string> each loaded Module's namespace prefix and source directory */
     private static array $autoload = [];
 
-    /** @var array<string, array{manifest: ?Manifest, state: string, halt: ?Halt}>|null this request's discovery, until a state changes */
+    /** @var array<string, array{manifest: ?Manifest, state: ModuleState, halt: ?Halt}>|null this request's discovery, until a state changes */
     private ?array $discovered = null;
 
     public function __construct(
@@ -60,7 +54,7 @@ final class Modules
      * Every folder in `modules/`, by Package id. Discovery never fails as a
      * whole: whatever is wrong with one Module Halts that one only.
      *
-     * @return array<string, array{manifest: ?Manifest, state: string, halt: ?Halt}>
+     * @return array<string, array{manifest: ?Manifest, state: ModuleState, halt: ?Halt}>
      */
     public function all(): array
     {
@@ -96,21 +90,21 @@ final class Modules
     private function activateLocked(string $id, string $locale): ?array
     {
         $module = $this->all()[$id] ?? null;
-        if ($module === null || $module['state'] === self::ACTIVE) {
+        if ($module === null || $module['state'] === ModuleState::Active) {
             return ['dev.modules.error.state', []];
         }
         $manifest = $module['manifest'];
         if ($module['halt'] !== null || $manifest === null) {
             return $module['halt'] ?? ['dev.modules.error.state', []];
         }
-        if ($module['state'] === self::UPLOADED) {
+        if ($module['state'] === ModuleState::Uploaded) {
             $refused = $this->createStore($manifest, $locale);
             if ($refused !== null) {
                 return $refused;
             }
         }
-        $this->stores->content->put('modules', ['id' => $id, 'state' => self::ACTIVE]);
-        $this->log->write('info', 'roots', 'module.activated', 'Module activated', ['module' => $id, 'from' => $module['state']]);
+        $this->stores->content->put('modules', ['id' => $id, 'state' => ModuleState::Active->value]);
+        $this->log->write('info', 'roots', 'module.activated', 'Module activated', ['module' => $id, 'from' => $module['state']->value]);
 
         return null;
     }
@@ -184,10 +178,10 @@ final class Modules
 
     private function deactivateLocked(string $id): bool
     {
-        if (($this->all()[$id]['state'] ?? null) !== self::ACTIVE) {
+        if (($this->all()[$id]['state'] ?? null) !== ModuleState::Active) {
             return false;
         }
-        $this->stores->content->put('modules', ['id' => $id, 'state' => self::INACTIVE]);
+        $this->stores->content->put('modules', ['id' => $id, 'state' => ModuleState::Inactive->value]);
         $this->log->write('info', 'roots', 'module.deactivated', 'Module deactivated', ['module' => $id]);
 
         return true;
@@ -201,7 +195,7 @@ final class Modules
 
     private function deleteDataLocked(string $id): bool
     {
-        if (($this->all()[$id]['state'] ?? null) !== self::INACTIVE) {
+        if (($this->all()[$id]['state'] ?? null) !== ModuleState::Inactive) {
             return false;
         }
         $this->stores->deleteModule($id);
@@ -222,7 +216,7 @@ final class Modules
     {
         $locales = LocaleResolver::SHIPPED;
         foreach ($this->all() as $id => $module) {
-            if ($module['state'] === self::ACTIVE) {
+            if ($module['state'] === ModuleState::Active) {
                 $locales = array_values(array_intersect($locales, $this->covered($id)));
             }
         }
@@ -230,11 +224,11 @@ final class Modules
         return $locales;
     }
 
-    /** @return array{manifest: ?Manifest, state: string, halt: ?Halt} */
+    /** @return array{manifest: ?Manifest, state: ModuleState, halt: ?Halt} */
     private function discover(string $id): array
     {
         $stored = $this->stores->content->get('modules', $id)['state'] ?? null;
-        $state = $stored === self::ACTIVE || $stored === self::INACTIVE ? $stored : self::UPLOADED;
+        $state = $stored === null ? ModuleState::Uploaded : ModuleState::from(is_string($stored) ? $stored : throw new UnexpectedValueException("The stored state of Module $id is not a string"));
         if (preg_match(Manifest::ID, $id) !== 1) {
             return ['manifest' => null, 'state' => $state, 'halt' => ['dev.modules.halt.folder', []]];
         }
@@ -248,7 +242,7 @@ final class Modules
     }
 
     /** @return Halt|null */
-    private function halt(string $id, Manifest $manifest, string $state): ?array
+    private function halt(string $id, Manifest $manifest, ModuleState $state): ?array
     {
         if ($manifest->id !== $id) {
             return ['dev.modules.halt.id', ['id' => $manifest->id]];
@@ -263,7 +257,7 @@ final class Modules
             return ['dev.modules.halt.requires', ['unmet' => implode(', ', $unmet)]];
         }
         // An Uploaded Module's Store can only be left by a failed activation, which removes it.
-        if ($state !== self::UPLOADED && $this->stores->moduleExists($id)) {
+        if ($state !== ModuleState::Uploaded && $this->stores->moduleExists($id)) {
             try {
                 $version = $this->stores->module($id, $manifest->storeSchema())->schemaVersion();
             } catch (Throwable $error) {
@@ -282,7 +276,7 @@ final class Modules
     {
         $module = $this->all()[$id] ?? null;
 
-        return $module !== null && $module['state'] === self::ACTIVE && $module['halt'] === null ? $module['manifest'] : null;
+        return $module !== null && $module['state'] === ModuleState::Active && $module['halt'] === null ? $module['manifest'] : null;
     }
 
     /** The Manifest of Module $id when it is runnable and declares developer Screen $name, else null. */
