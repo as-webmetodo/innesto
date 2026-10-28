@@ -52,7 +52,7 @@ test('first run: the Setup code read over FTP and a new password sign the Develo
 
 test('protected files are denied or print nothing over HTTP', async ({ request }) => {
   await request.get('dev/');
-  for (const path of ['locales/en.php', 'templates/dev/layout.php', 'src/App.php', 'data-path.php']) {
+  for (const path of ['locales/en.php', 'templates/dev/layout.php', 'src/App.php', 'data-path.php', 'modules/in.hours/module.php']) {
     const response = await request.get(path);
     // Apache's own 403 where .htaccess is honoured, else the bootstrap guard's empty output.
     if (response.status() !== 403) {

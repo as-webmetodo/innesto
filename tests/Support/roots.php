@@ -136,13 +136,23 @@ function loggedEvents(array $install): array
 }
 
 /**
+ * Roots' Stores, as later consumers open them.
+ *
+ * @param array{roots: string, webroot: string} $install
+ */
+function rootsStores(array $install): Innesto\Roots\RootsStores
+{
+    return Innesto\Roots\RootsStores::open(Innesto\Roots\DataDirectory::locate($install['roots'], $install['webroot']));
+}
+
+/**
  * Roots' content Store, as later consumers open it.
  *
  * @param array{roots: string, webroot: string} $install
  */
 function contentStore(array $install): Innesto\Roots\Store\Store
 {
-    return Innesto\Roots\RootsStores::open(Innesto\Roots\DataDirectory::locate($install['roots'], $install['webroot']))->content;
+    return rootsStores($install)->content;
 }
 
 const SHARED_FORM = [
@@ -161,4 +171,86 @@ const SHARED_FORM = [
 function postConfig(array $install, string $token, array $form): Innesto\Roots\Http\Response
 {
     return $install['app']->handle(request('POST', 'dev', $form + ['csrf' => csrfToken($install, $token)], ['innesto_dev' => $token], ORIGIN));
+}
+
+/**
+ * Uploads Modules into an install, as the Developer does over FTP: each
+ * directory is copied into `<roots>/modules/` under its own name.
+ *
+ * @param array{roots: string} $install
+ */
+function uploadModules(array $install, string ...$dirs): void
+{
+    foreach ($dirs as $dir) {
+        $target = $install['roots'] . '/modules/' . basename($dir);
+        $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::SELF_FIRST);
+        is_dir($target) || mkdir($target, 0o777, true);
+        foreach ($files as $file) {
+            assert($file instanceof SplFileInfo);
+            $path = $target . substr($file->getPathname(), strlen($dir));
+            $file->isDir() ? (is_dir($path) || mkdir($path)) : copy($file->getPathname(), $path);
+        }
+    }
+}
+
+/** Innesto Orario as shipped in this repository. */
+const ORARIO = __DIR__ . '/../../modules/in.hours';
+
+/** The fake Modules the Module tests upload. */
+const FAKE_MODULES = __DIR__ . '/../fixtures/modules';
+
+/**
+ * A Developer past the first run, with the Shared config confirmed: their
+ * session token.
+ *
+ * @param array{app: Innesto\Roots\App, roots: string} $install
+ */
+function confirmedDeveloper(array $install): string
+{
+    $token = completeSetup($install);
+    expect(postConfig($install, $token, SHARED_FORM)->status)->toBe(303);
+
+    return $token;
+}
+
+/**
+ * A GET of the Developer area with $query, signed in with $token.
+ *
+ * @param array{app: Innesto\Roots\App} $install
+ * @param array<string, string> $query
+ */
+function devPage(array $install, string $token, array $query): Innesto\Roots\Http\Response
+{
+    return $install['app']->handle(request('GET', 'dev', cookies: ['innesto_dev' => $token], query: $query));
+}
+
+/**
+ * Posts a Developer-area form with the session's CSRF token.
+ *
+ * @param array{app: Innesto\Roots\App} $install
+ * @param array<string, string> $form
+ * @param array<string, string> $query
+ */
+function devPost(array $install, string $token, array $form, array $query = []): Innesto\Roots\Http\Response
+{
+    return $install['app']->handle(request('POST', 'dev', $form + ['csrf' => csrfToken($install, $token)], ['innesto_dev' => $token], ORIGIN, query: $query));
+}
+
+/**
+ * Uploads a Module whose Manifest is Orario's with $changes, under folder
+ * $folder; a string $changes is written as module.php verbatim, and an
+ * empty one leaves the folder without module.php.
+ *
+ * @param array{roots: string} $install
+ * @param array<string, mixed>|string $changes
+ */
+function uploadManifest(array $install, string $folder, array|string $changes): void
+{
+    defined('INNESTO_ROOTS') || define('INNESTO_ROOTS', true);
+    $dir = $install['roots'] . "/modules/$folder";
+    is_dir($dir) || mkdir($dir, 0o777, true);
+    $orario = require ORARIO . '/module.php';
+    assert(is_array($orario));
+    $manifest = is_string($changes) ? $changes : "<?php\n\nreturn " . var_export(array_replace($orario, ['id' => $folder], $changes), true) . ";\n";
+    $manifest === '' || file_put_contents("$dir/module.php", $manifest);
 }

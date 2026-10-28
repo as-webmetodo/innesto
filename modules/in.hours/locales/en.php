@@ -16,4 +16,5 @@ return [
     'closed.day' => 'Closed · reopens {day} at {time}',
     'closed.date' => 'Closed · reopens on {date} at {time}',
     'closed.until_further_notice' => 'Closed until further notice',
+    'schedule.main' => 'Main',
 ];

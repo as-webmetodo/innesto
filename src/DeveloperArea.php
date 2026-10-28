@@ -14,9 +14,9 @@ use Innesto\Roots\Http\Response;
 use Innesto\Roots\Store\Store;
 
 /**
- * `dev/`: first run, sign-in, sign-out, password change and the config
- * Screen, which a signed-in Developer sees until the Shared config is
- * confirmed. Every POST passes the Origin/Referer check here; actions of a
+ * `dev/`: first run, sign-in, sign-out, password change, the config Screen
+ * (which a signed-in Developer sees until the Shared config is confirmed),
+ * the Modules list and the Modules' own Screens. Every POST passes the Origin/Referer check here; actions of a
  * signed-in Developer also need the session's CSRF token. Successful posts
  * redirect (PRG).
  */
@@ -43,6 +43,8 @@ final class DeveloperArea
         private readonly RootsLog $log,
         Clock $clock,
         private readonly Template $template,
+        private readonly Modules $modules,
+        private readonly FaultFence $fence,
     ) {
         $this->setupCode = new SetupCode($dataDir);
         $this->resetMarker = "$dataDir/reset-marker";
@@ -55,12 +57,16 @@ final class DeveloperArea
         $this->issueSetupCodeIfNeeded();
         $token = $request->cookies[self::COOKIE] ?? null;
         $session = $this->sessions->find($token);
-        $config = $session === null ? null : new ConfigScreen($this->content, $this->log, $this->template, $request, $session['csrf']);
+        $config = $session === null ? null : new ConfigScreen($this->content, $this->log, $this->template, $request, $session['csrf'], $this->modules->enableable());
+        $modules = $session === null ? null : new ModulesScreen($this->modules, $this->fence, SharedConfig::fromStore($this->content, $request->origin()), $this->template, $request, $session['csrf']);
+        $screen = $request->query['screen'] ?? '';
 
         if ($request->method !== 'POST') {
             return match (true) {
-                $session === null || $config === null => $this->signedOutPage(200),
-                ($request->query['screen'] ?? '') === 'config' || !$config->confirmed() => $config->page(),
+                $session === null || $config === null || $modules === null => $this->signedOutPage(200),
+                $screen === 'config' || !$config->confirmed() => $config->page(),
+                isset($request->query['module']) => $modules->screen(),
+                $screen === 'modules' => $modules->page(),
                 default => $this->homePage($session['csrf'], 200),
             };
         }
@@ -78,10 +84,14 @@ final class DeveloperArea
 
             return $action === 'setup' ? $this->setup($request) : $this->signIn($request);
         }
-        if ($session === null || $config === null || $token === null || !hash_equals($session['csrf'], $request->form['csrf'] ?? '')) {
+        if ($session === null || $config === null || $modules === null || $token === null || !hash_equals($session['csrf'], $request->form['csrf'] ?? '')) {
             $this->log->write('warning', 'roots', 'csrf.refused', 'A Developer-area form had no valid CSRF token', ['ip' => $request->ip]);
 
             return $this->forbidden();
+        }
+
+        if (isset($request->query['module'])) {
+            return $modules->screen();
         }
 
         return match ($action) {
@@ -89,6 +99,9 @@ final class DeveloperArea
             'password' => $this->changePassword($request, $session['csrf']),
             'shared' => $config->saveShared(),
             'settings' => $config->saveSettings(),
+            'activate' => $modules->activate(),
+            'deactivate' => $modules->deactivate(),
+            'delete_data' => $modules->deleteData(),
             default => Response::redirect($request->basePath . 'dev/'),
         };
     }

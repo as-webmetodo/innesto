@@ -23,7 +23,7 @@ final class Template
     public function render(string $name, array $vars = []): string
     {
         $vars += [
-            'e' => static fn (string $text): string => htmlspecialchars($text, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
+            'e' => self::escape(...),
             't' => $this->text(...),
             'locale' => $this->locale,
         ];
@@ -41,6 +41,12 @@ final class Template
 
             return (string) ob_get_clean();
         })("$this->dir/$name.php", $vars);
+    }
+
+    /** HTML escaping, for text and attribute values alike. */
+    public static function escape(string $text): string
+    {
+        return htmlspecialchars($text, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     }
 
     /** @param array<string, string|int> $params */

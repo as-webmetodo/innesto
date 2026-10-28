@@ -7,3 +7,6 @@ parameters:
         - src
         - tests
         - modules
+    excludePaths:
+        # Plain-PHP templates, like Roots' own templates/, which is not analysed either.
+        - tests/fixtures/modules/*/templates/*

@@ -527,6 +527,16 @@ The user decided these on 2026-10-28, while #31 was implemented:
 | How strictly the Shared config and Roots settings are validated | Business profile text up to 200 characters without control characters; country as ISO 3166-1 alpha-2; phone as digits with `+ ( ) . / -` and spaces; URLs absolute http(s) in printable ASCII (IDN hosts in punycode); at most 20 extra origins, stored as browsers send them (lower case, no default port); any IANA zone tzdata knows, backward-compatible names included, so a later rename keeps a stored zone valid. A stored document that fails these checks fails fast. |
 | What the two Shared config checks mean | An incomplete Business profile has no name, street address or city. The Site URL is still the default when it equals the root of Roots' origin, ignoring a trailing slash and case. |
 
+The user decided these on 2026-10-28, while #32 was implemented:
+
+| Gap | Decision |
+|---|---|
+| How the Context object is fakeable ([#13]) | One final `Context` class whose parts (Store, Shared config, clock, catalogues, templates, log, Actor, mail) are injected; tests build it from their own Store and clock. |
+| What "a Module covers a locale" means ([§3.5](#35-shared-config-and-roots-settings)) | The Module ships `locales/<locale>.php` for it, as Roots does for its own; Innesto Orario ships a minimal `en-GB.php`. |
+| The Screen contract ([#13]) | `Module::screen(name, Context, ScreenRequest): ScreenResult`, a page Roots puts inside its shell or a redirect to one of the Module's developer Screens; Roots gives Screen templates the session's `$csrf`. |
+| The mail service before the Self-check exists ([§3.14](#314-mail-service)) | A `mail()`-backed `Mail` with `send(to, subject, body)`, in the Context only of a Module that requires or optionally uses `mail`. |
+| When `onActivate` runs ([§3.7](#37-modules-discovery-manifest-lifecycle)) | Only on Uploaded → Active; re-activating an Inactive Module keeps its Store as it is. Halted is worked out on every load and never stored; a Store schema mismatch Halts only an Active or Inactive Module, since an Uploaded one's leftover Store is removed by its next Activate. Activation reports a locale gap but does not refuse. |
+
 Defaults this spec sets without a separate question. Each is cheap to change in the plan:
 
 - `<roots>/data-path.php` records the Data directory, so Roots finds it on every request and the Developer can move it ([§3.2](#32-data-directory-and-stores)).

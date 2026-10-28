@@ -15,4 +15,5 @@ return [
     'closed.day' => 'Chiuso · riapre {day} alle {time}',
     'closed.date' => 'Chiuso · riapre il {date} alle {time}',
     'closed.until_further_notice' => 'Chiuso fino a nuovo avviso',
+    'schedule.main' => 'Principale',
 ];

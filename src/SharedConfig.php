@@ -107,7 +107,7 @@ final class SharedConfig
             && array_filter($strings, is_string(...)) === $strings
             && is_array($locales) && array_is_list($locales) && array_filter($locales, is_string(...)) === $locales;
         /** @var SharedDocument $document as the checks above prove */
-        if (!$shaped || self::errors($document) !== []) {
+        if (!$shaped || self::errors($document, LocaleResolver::SHIPPED) !== []) {
             throw new UnexpectedValueException('The stored Shared config is not one Roots writes');
         }
 
@@ -118,9 +118,10 @@ final class SharedConfig
      * The Shared config a form asks for, normalised, and the fields at fault.
      *
      * @param array<string, string> $form
+     * @param list<string> $locales the locales Roots and every Active Module cover, the only ones it may enable
      * @return array{SharedDocument, list<string>}
      */
-    public static function fromForm(array $form): array
+    public static function fromForm(array $form, array $locales): array
     {
         $field = static fn (string $name): string => trim($form[$name] ?? '');
         $document = [
@@ -135,12 +136,12 @@ final class SharedConfig
             'url' => $field('url'),
             'image' => $field('image'),
             'default_locale' => $field('default_locale'),
-            'enabled_locales' => array_values(array_filter(LocaleResolver::SHIPPED, static fn (string $locale): bool => isset($form["locale_$locale"]))),
+            'enabled_locales' => array_values(array_filter($locales, static fn (string $locale): bool => isset($form["locale_$locale"]))),
             'timezone' => $field('timezone'),
             'site_url' => $field('site_url'),
         ];
 
-        return [$document, self::errors($document)];
+        return [$document, self::errors($document, $locales)];
     }
 
     /** No name or no address: the `jsonld` View has nothing to emit. */
@@ -167,10 +168,14 @@ final class SharedConfig
     }
 
     /**
+     * A stored document is checked against every locale Roots ships, so a
+     * Module activated later never makes it unreadable.
+     *
      * @param SharedDocument $document
+     * @param list<string> $locales the locales it may enable
      * @return list<string> the fields at fault
      */
-    private static function errors(array $document): array
+    private static function errors(array $document, array $locales): array
     {
         $errors = [];
         foreach (self::TEXT as $name) {
@@ -186,7 +191,7 @@ final class SharedConfig
             'url' => $document['url'] === '' || self::webUrl($document['url']),
             'image' => $document['image'] === '' || self::webUrl($document['image']),
             'default_locale' => in_array($document['default_locale'], $document['enabled_locales'], true)
-                && array_diff($document['enabled_locales'], LocaleResolver::SHIPPED) === [],
+                && array_diff($document['enabled_locales'], $locales) === [],
             // With the backward-compatible names, a zone tzdata renames later stays valid.
             'timezone' => in_array($document['timezone'], DateTimeZone::listIdentifiers(DateTimeZone::ALL_WITH_BC), true),
             'site_url' => self::webUrl($document['site_url']),

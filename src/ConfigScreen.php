@@ -9,7 +9,6 @@ namespace Innesto\Roots;
 use DateTimeZone;
 use Innesto\Roots\Http\Request;
 use Innesto\Roots\Http\Response;
-use Innesto\Roots\Locale\LocaleResolver;
 use Innesto\Roots\Store\Store;
 
 /**
@@ -28,6 +27,8 @@ final class ConfigScreen
         private readonly Template $template,
         private readonly Request $request,
         private readonly string $csrf,
+        /** @var list<string> the locales Roots and every Active Module cover */
+        private readonly array $locales,
     ) {
     }
 
@@ -43,7 +44,7 @@ final class ConfigScreen
 
     public function saveShared(): Response
     {
-        [$shared, $errors] = SharedConfig::fromForm($this->request->form);
+        [$shared, $errors] = SharedConfig::fromForm($this->request->form, $this->locales);
         if ($errors !== []) {
             return $this->render(422, $errors, $shared, null);
         }
@@ -107,7 +108,7 @@ final class ConfigScreen
             'defaultSiteUrl' => $config->siteUrlIsDefault(),
             'siteOrigin' => $config->siteOrigin(),
             'types' => SharedConfig::TYPES,
-            'locales' => LocaleResolver::SHIPPED,
+            'locales' => $this->locales,
             'timezones' => $timezones,
         ]);
     }
