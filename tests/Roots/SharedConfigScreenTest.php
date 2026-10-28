@@ -19,7 +19,7 @@ test('until the Shared config is confirmed, the Developer area opens on it, pre-
         ->and($page->body)->toContain('value="signout"');
 });
 
-test('confirming the Shared config saves it, logs the change and bumps the content Store revision', function (): void {
+test('confirming the Shared config saves it, logs the change, bumps the content Store revision and opens the Self-check\'s results', function (): void {
     $install = install();
     $token = completeSetup($install);
     $revision = contentStore($install)->revision();
@@ -28,7 +28,7 @@ test('confirming the Shared config saves it, logs the change and bumps the conte
     $config = Innesto\Roots\SharedConfig::fromStore(contentStore($install), 'https://example.com');
 
     expect($response->status)->toBe(303)
-        ->and($response->header('Location'))->toBe('/innesto/dev/')
+        ->and($response->header('Location'))->toBe('/innesto/dev/?screen=health')
         ->and(contentStore($install)->revision())->toBeGreaterThan($revision)
         ->and(loggedEvents($install))->toBe(['setup_code.issued', 'setup.completed', 'shared_config.changed'])
         ->and(signedInPage($install, $token)->body)->toContain('href="?screen=config"')
@@ -51,6 +51,7 @@ test('saving the same Shared config again changes nothing', function (): void {
     $response = postConfig($install, $token, SHARED_FORM);
 
     expect($response->status)->toBe(303)
+        ->and($response->header('Location'))->toBe('/innesto/dev/')
         ->and(contentStore($install)->revision())->toBe($revision)
         ->and(loggedEvents($install))->toBe(['setup_code.issued', 'setup.completed', 'shared_config.changed']);
 });

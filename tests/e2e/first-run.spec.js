@@ -37,6 +37,9 @@ test('first run: the Setup code read over FTP and a new password sign the Develo
   await page.getByLabel('Site URL', { exact: true }).fill('https://www.example.com/');
   await page.getByLabel('Name', { exact: true }).fill('Forno Rossi');
   await page.getByRole('button', { name: 'Confirm the Shared config' }).click();
+  // The first confirm ends setup on the Self-check's results.
+  await expect(page.getByRole('heading', { name: 'Health' })).toBeVisible();
+  await page.getByRole('link', { name: 'Developer area' }).click();
   await expect(page.getByRole('heading', { name: 'Developer area' })).toBeVisible();
 
   await page.getByRole('link', { name: 'Shared config and Roots settings' }).click();

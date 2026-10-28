@@ -49,8 +49,12 @@ final class Template
         return htmlspecialchars($text, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     }
 
-    /** @param array<string, string|int> $params */
-    private function text(string $key, array $params = []): string
+    /**
+     * Catalogue text in the page's locale.
+     *
+     * @param array<string, string|int> $params
+     */
+    public function text(string $key, array $params = []): string
     {
         return $this->catalogue->text($this->locale, $key, $params);
     }

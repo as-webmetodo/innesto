@@ -11,12 +11,16 @@ use Throwable;
 /**
  * Sends PHP warnings, uncaught errors and fatals to the Roots log, tagged
  * with the Module whose code was running (fatals are also counted against
- * it). Until the request has located the Data directory there is no log, and
- * they go to error_log().
+ * it). A PHP warning is logged as an error, so it raises the home badge; a
+ * notice or deprecation is logged as a warning, since a PHP upgrade on the
+ * host can raise one on every request. Until the request has located the Data
+ * directory there is no log, and they go to error_log().
  */
 final class ErrorHandler
 {
     private const FATAL = E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR | E_USER_ERROR | E_RECOVERABLE_ERROR;
+
+    private const WARNING = E_WARNING | E_USER_WARNING;
 
     private ?RootsLog $log = null;
 
@@ -46,7 +50,12 @@ final class ErrorHandler
         if ((error_reporting() & $level) === 0) {
             return true;
         }
-        $this->write('warning', 'php.warning', $message, ['level' => $level, 'file' => $file, 'line' => $line]);
+        $context = ['level' => $level, 'file' => $file, 'line' => $line];
+        if (($level & self::WARNING) !== 0) {
+            $this->write('error', 'php.warning', $message, $context);
+        } else {
+            $this->write('warning', 'php.notice', $message, $context);
+        }
 
         return true;
     }

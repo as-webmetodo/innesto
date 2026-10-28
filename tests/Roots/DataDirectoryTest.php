@@ -130,3 +130,27 @@ test('a data-path.php that does not return an absolute path is refused', functio
     'a relative path' => "'data'",
     'a non-string' => '42',
 ]);
+
+test('a Data directory whose parent has a generic webroot name counts as in another site\'s webroot', function (string $name): void {
+    // $name/ serves the main domain; this site's webroot is $name/site.example/.
+    $base = sys_get_temp_dir() . '/innesto-host-' . bin2hex(random_bytes(6));
+    mkdir("$base/$name/site.example/innesto", 0o777, true);
+
+    $data = DataDirectory::locate("$base/$name/site.example/innesto", "$base/$name/site.example", $base);
+
+    expect(dirname($data->path))->toBe("$base/$name")
+        ->and($data->insideWebroot)->toBeFalse()
+        ->and($data->insideOtherWebroot)->toBeTrue()
+        ->and(file_get_contents("$data->path/.htaccess"))->toContain('Require all denied');
+})->with(['www', 'html', 'web', 'public']);
+
+test('a generic webroot name higher up than the parent does not count', function (): void {
+    $base = sys_get_temp_dir() . '/innesto-host-' . bin2hex(random_bytes(6));
+    mkdir("$base/www/account/site.example/innesto", 0o777, true);
+
+    $data = DataDirectory::locate("$base/www/account/site.example/innesto", "$base/www/account/site.example", $base);
+
+    expect(dirname($data->path))->toBe("$base/www/account")
+        ->and($data->insideOtherWebroot)->toBeFalse()
+        ->and(is_file("$data->path/.htaccess"))->toBeFalse();
+});

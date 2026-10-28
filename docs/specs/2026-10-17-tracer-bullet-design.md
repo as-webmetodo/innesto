@@ -294,6 +294,7 @@ From [#22].
 
 - **Roots log**: one append-only guarded file (`<?php exit; ?>` followed by JSON lines) in the Data directory, separate from every Store. Each line holds a UTC timestamp, a per-request id, a level, the source (`roots` or a Package id), an event name, a message and its context.
   - It records errors (fenced faults, PHP warnings through Roots' handler, fatals through a shutdown hook), security events (sign-in failures, throttling, Setup code issued or used, PIN regenerated, password changed) and changes (Activate, Deactivate, Delete data, settings saved, and Client and Developer saves to Module data).
+  - Beside it, a guarded marker holds the time of the latest error line, which the home badge reads instead of the log.
   - There are no per-request lines.
   - When the file passes about 1 MB at write time, it is renamed over one previous generation.
   - Appends and rotation happen under `flock`. The `<?php exit; ?>` header is written whenever the file is empty.
@@ -552,6 +553,10 @@ The user decided these on 2026-10-28, while #30 was implemented:
 | A Data directory in another site's webroot, as on an addon domain whose walk stops at `public_html` ([§3.2](#32-data-directory-and-stores)) | No probe from Roots' origin can reach it, so a webroot-like folder name marks it: `public_html`, `private_html`, `htdocs`, `httpdocs`, `httpsdocs` or `wwwroot` anywhere above it, or `www`, `html`, `web` or `public` as its parent. It gets `.htaccess`, flat files and a Warn. |
 | A reachable Data directory after install on SQLite ([§3.11](#311-self-check) grades a reachable non-`.php` probe Warn, since at setup it only forces flat files) | A Fail: on SQLite the whole database could be downloaded. It is shown, raises the badge and is logged, Roots keeps serving, and a password reset refuses to finish until the Data directory is moved. |
 | What makes an error "seen" for the badge ([§3.12](#312-roots-log-and-health-screen)) | Opening the Health Screen; a Module error or a Roots log error newer than that visit raises the badge. |
+| Where setup shows the Warns and the backend reason ([§2](#2-the-slice-step-by-step) step 3) | On the Health Screen, which the first confirm of the Shared config opens. Until then every Developer-area page is the Shared config, and the two Shared config Warns would always show. |
+| A Data directory that is unwritable ([§3.11](#311-self-check) grades it Fail) | It stops Roots before the Self-check, with its own page and fix hint. It is not graded or logged, since the Stores and the log live in it. |
+| Which PHP errors raise the badge ([§3.12](#312-roots-log-and-health-screen)) | `E_WARNING` and `E_USER_WARNING` are logged as errors and raise it. Notices and deprecations are logged as warnings, like security events, since a PHP upgrade on the host can raise one on every request. |
+| The browser-run HTTPS probe ([§3.11](#311-self-check)) | HTTPS is graded on the server. The browser probe runs on the plain-HTTP refusal page, where it explains a proxy that reports HTTPS only through `X-Forwarded-*`; it posts nothing, since no result can reach Roots over plain HTTP. |
 
 Defaults this spec sets without a separate question. Each is cheap to change in the plan:
 

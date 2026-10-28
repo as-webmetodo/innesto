@@ -6,7 +6,6 @@ declare(strict_types=1);
 
 namespace Innesto\Roots;
 
-use DateTimeZone;
 use Innesto\Roots\Http\Request;
 
 /**
@@ -31,6 +30,9 @@ final class SelfCheck
 
     private const MB = 1024 * 1024;
 
+    /** The oldest SQLite whose features SqliteStore uses. */
+    private const SQLITE_FLOOR = '3.27';
+
     public function __construct(
         private readonly RootsStores $stores,
         private readonly DataDirectory $data,
@@ -48,7 +50,7 @@ final class SelfCheck
      */
     public static function serverFindings(array $facts): array
     {
-        $sqlite = $facts['sqlite'] !== null && version_compare($facts['sqlite'], '3.27', '>=');
+        $sqlite = $facts['sqlite'] !== null && version_compare($facts['sqlite'], self::SQLITE_FLOOR, '>=');
         $seconds = (int) $facts['max_execution_time'];
         $memory = self::bytes($facts['memory_limit']);
         $upload = min(self::bytes($facts['upload_max_filesize']), self::bytes($facts['post_max_size']));
@@ -116,12 +118,12 @@ final class SelfCheck
      *
      * @param BrowserResults $results
      */
-    public function backendReason(array $results, bool $files): string
+    private function backendReason(array $results, bool $files): string
     {
         $version = RootsStores::sqliteVersion();
 
         return match (true) {
-            $version === null || version_compare($version, '3.27', '<') => 'no_sqlite',
+            $version === null || version_compare($version, self::SQLITE_FLOOR, '<') => 'no_sqlite',
             $this->data->insideOtherWebroot => 'other_webroot',
             $results['data_txt'] => 'reachable',
             $files => 'chosen',
@@ -248,7 +250,7 @@ final class SelfCheck
         }
         $this->stores->runtime->put('health', [
             'id' => $kind,
-            'time' => $this->clock->now()->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z'),
+            'time' => UtcStamp::now($this->clock),
             'findings' => $findings,
         ]);
     }

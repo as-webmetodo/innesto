@@ -63,7 +63,7 @@ test('the log keeps the time of its latest error, guarded, for the home badge', 
     $log->write('error', 'acme.failing', 'module.fault', 'RuntimeException: boom');
     $clock->advance(60);
 
-    $log->write('warning', 'roots', 'php.warning', 'Undefined variable');
+    $log->write('warning', 'roots', 'signin.failed', 'Wrong Developer password');
     $log->write('info', 'roots', 'setup.completed', 'Setup code used');
 
     expect($log->lastError())->toBe('2026-10-27T10:00:00Z')

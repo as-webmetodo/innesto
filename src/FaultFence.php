@@ -6,7 +6,6 @@ declare(strict_types=1);
 
 namespace Innesto\Roots;
 
-use DateTimeZone;
 use Innesto\Roots\Store\Store;
 use Throwable;
 
@@ -67,7 +66,7 @@ final class FaultFence
                 'id' => $id,
                 'count' => (is_int($count) ? $count : 0) + 1,
                 'message' => $message,
-                'time' => $this->clock->now()->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z'),
+                'time' => UtcStamp::now($this->clock),
             ]);
         });
     }

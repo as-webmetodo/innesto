@@ -150,6 +150,37 @@ test('a write after setup\'s last step, such as a fault counted at shutdown, mov
         ->and(rootsStores($install)->runtime->get('faults', 'in.hours')['message'] ?? null)->toBe('late');
 })->skip(fn (): bool => !extension_loaded('pdo_sqlite'), 'needs SQLite');
 
+test('a move to SQLite cut short is redone from the files on the next request', function (): void {
+    $install = install();
+    $token = completeSetup($install);
+    $data = dataPath($install);
+    // A request died after the runtime Store's move and during the content Store's.
+    file_put_contents("$data/roots-runtime.sqlite", 'half');
+    file_put_contents("$data/roots-content.sqlite.new", 'half');
+
+    $page = signedInPage($install, $token);
+
+    expect($page->body)->toContain('value="signout"')
+        ->and(rootsStores($install)->sqlite)->toBeTrue()
+        ->and([...glob("$data/*.sqlite.new") ?: [], ...glob("$data/roots-content.php*") ?: [], ...glob("$data/roots-runtime.php*") ?: [], ...glob("$data/roots-to-sqlite.php") ?: []])->toBe([]);
+})->skip(fn (): bool => !extension_loaded('pdo_sqlite'), 'needs SQLite');
+
+test('a Data directory that is no longer writable stops Roots with a page that says how to fix it', function (): void {
+    $install = install();
+    completeSetup($install);
+    $data = dataPath($install);
+    chmod($data, 0o555);
+
+    try {
+        $response = $install['app']->handle(request('GET', 'dev'));
+    } finally {
+        chmod($data, 0o755);
+    }
+
+    expect($response->status)->toBe(500)
+        ->and($response->body)->toContain('Roots cannot create its Data directory');
+});
+
 test('Roots\' Stores use guarded files in a Data directory inside the webroot', function (): void {
     $install = install();
     // The Developer moved the Data directory into the webroot by editing data-path.php.

@@ -39,7 +39,8 @@ test('setup runs the HTTP probes from the browser, picks the backend and says wh
   await page.getByLabel('City', { exact: true }).fill('Roma');
   await page.getByRole('button', { name: 'Confirm the Shared config' }).click();
 
-  await page.getByRole('link', { name: /^Health/ }).click();
+  // The first confirm ends setup on the Health Screen.
+  await expect(page).toHaveURL(/\?screen=health$/);
   await expect(page.getByText(expected.storage)).toBeVisible();
   for (const [text, grade] of Object.entries(expected.grades)) {
     await expect(page.locator(`li[data-grade="${grade}"]`, { hasText: text }).first()).toBeVisible();

@@ -16,6 +16,8 @@ use Innesto\Roots\Store\Store;
  * Roots settings, one form each. A valid save writes the content Store
  * (bumping its revision when something changed), logs the changed fields
  * and redirects; an invalid one re-renders with `422` and the fields at fault.
+ * The first confirm of the Shared config ends setup on the Health Screen, so
+ * the Developer sees the Self-check's Warns and why the backend was chosen.
  *
  * @phpstan-import-type SharedDocument from SharedConfig
  */
@@ -48,9 +50,10 @@ final class ConfigScreen
         if ($errors !== []) {
             return $this->render(422, $errors, $shared, null);
         }
+        $first = !$this->confirmed();
         $this->save(SharedConfig::ID, $shared, 'shared_config.changed', 'Shared config changed');
 
-        return Response::redirect($this->request->basePath . 'dev/');
+        return Response::redirect($this->request->basePath . ($first ? 'dev/?screen=health' : 'dev/'));
     }
 
     public function saveSettings(): Response

@@ -24,7 +24,7 @@ function attachedHandler(): array
     return ['handler' => $handler, 'fence' => $fence, 'dir' => $dir];
 }
 
-test('a PHP warning goes to the Roots log, tagged with the Module whose code was running', function (): void {
+test('a PHP warning goes to the Roots log as an error, tagged with the Module whose code was running', function (): void {
     ['handler' => $handler, 'fence' => $fence, 'dir' => $dir] = attachedHandler();
 
     // Whatever the host's own error_reporting.
@@ -39,11 +39,27 @@ test('a PHP warning goes to the Roots log, tagged with the Module whose code was
 
     expect($handled)->toBeTrue()
         ->and(array_column($lines, 'event'))->toBe(['php.warning', 'php.warning'])
+        ->and(array_column($lines, 'level'))->toBe(['error', 'error'])
         ->and(array_column($lines, 'source'))->toBe(['roots', 'acme.probe'])
         ->and($lines[0]['message'] ?? null)->toBe('Undefined variable $x')
         ->and($lines[0]['context'] ?? null)->toBe(['level' => E_WARNING, 'file' => '/roots/src/App.php', 'line' => 12])
         ->and($fence->fault('acme.probe'))->toBeNull();
 });
+
+test('a PHP notice or deprecation is logged as a warning, which leaves the home badge alone', function (int $level): void {
+    ['handler' => $handler, 'dir' => $dir] = attachedHandler();
+    $reporting = error_reporting(E_ALL);
+    try {
+        $handler->handleError($level, 'Old habit', '/roots/src/App.php', 7);
+    } finally {
+        error_reporting($reporting);
+    }
+    $lines = logLines("$dir/roots-log.php");
+
+    expect(array_column($lines, 'event'))->toBe(['php.notice'])
+        ->and(array_column($lines, 'level'))->toBe(['warning'])
+        ->and(is_file("$dir/roots-log-error.php"))->toBeFalse();
+})->with(['E_NOTICE' => E_NOTICE, 'E_USER_NOTICE' => E_USER_NOTICE, 'E_DEPRECATED' => E_DEPRECATED, 'E_USER_DEPRECATED' => E_USER_DEPRECATED]);
 
 test('a silenced warning is not logged', function (): void {
     ['handler' => $handler, 'dir' => $dir] = attachedHandler();

@@ -99,7 +99,8 @@ final class RootsStores
      * Copies Roots' two Stores into SQLite, then removes the files and the
      * marker, all under a lock on the marker, so concurrent requests move them
      * once. The content Store moves last: its SQLite file is what open() goes
-     * by, so a move cut short is redone from the files.
+     * by, so a move cut short is redone from the files. The revisions restart
+     * at the move; no ETag exists before the first setup, so none repeats.
      */
     private static function moveToSqlite(string $dir): void
     {

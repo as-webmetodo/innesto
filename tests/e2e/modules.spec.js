@@ -22,6 +22,7 @@ test.beforeEach(async ({ page }) => {
   await page.getByRole('button', { name: 'Set the password and sign in' }).click();
   await page.getByLabel('Site URL', { exact: true }).fill('https://www.example.com/');
   await page.getByRole('button', { name: 'Confirm the Shared config' }).click();
+  await page.getByRole('link', { name: 'Developer area' }).click();
   await expect(page.getByRole('heading', { name: 'Developer area' })).toBeVisible();
 });
 

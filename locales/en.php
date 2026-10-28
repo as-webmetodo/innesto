@@ -163,6 +163,8 @@ return [
     'dev.health.mail' => 'Mail',
     'dev.health.mail.to' => 'Address',
     'dev.health.mail.send' => 'Send test mail',
+    'dev.health.mail.subject' => 'Innesto test mail',
+    'dev.health.mail.body' => 'This test mail was sent from the Innesto Developer area.',
     'dev.health.mail.sent' => 'The test mail was handed to the host\'s mailer. If it does not arrive, check the spam folder, then ask the host.',
     'dev.health.mail.address' => 'Enter one plain email address.',
     'dev.health.mail.refused' => 'The host\'s mailer refused the test mail. Ask the host whether mail() works.',

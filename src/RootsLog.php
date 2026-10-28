@@ -6,7 +6,6 @@ declare(strict_types=1);
 
 namespace Innesto\Roots;
 
-use DateTimeZone;
 use Innesto\Roots\Store\Schema;
 use RuntimeException;
 
@@ -32,7 +31,7 @@ final class RootsLog
         if (is_string($context['ip'] ?? null)) {
             $context['ip'] = self::truncateIp($context['ip']);
         }
-        $time = $this->clock->now()->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z');
+        $time = UtcStamp::now($this->clock);
         $line = json_encode([
             'time' => $time,
             'request' => $this->requestId,

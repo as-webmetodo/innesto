@@ -160,6 +160,8 @@ return [
     'dev.health.mail' => 'Posta',
     'dev.health.mail.to' => 'Indirizzo',
     'dev.health.mail.send' => 'Invia una mail di prova',
+    'dev.health.mail.subject' => 'Mail di prova di Innesto',
+    'dev.health.mail.body' => 'Questa mail di prova è stata inviata dall\'area Developer di Innesto.',
     'dev.health.mail.sent' => 'La mail di prova è stata consegnata al servizio di posta dell\'hosting. Se non arriva, controlla lo spam, poi chiedi all\'hosting.',
     'dev.health.mail.address' => 'Inserisci un solo indirizzo email semplice.',
     'dev.health.mail.refused' => 'Il servizio di posta dell\'hosting ha rifiutato la mail di prova. Chiedi all\'hosting se mail() funziona.',

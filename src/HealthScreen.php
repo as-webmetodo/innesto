@@ -6,7 +6,6 @@ declare(strict_types=1);
 
 namespace Innesto\Roots;
 
-use DateTimeZone;
 use Innesto\Roots\Http\Request;
 use Innesto\Roots\Http\Response;
 use Innesto\Roots\Store\Store;
@@ -41,7 +40,7 @@ final class HealthScreen
     public function page(): Response
     {
         $response = $this->render(200, null);
-        $this->runtime->put('health', ['id' => 'seen', 'time' => $this->now()]);
+        $this->runtime->put('health', ['id' => 'seen', 'time' => UtcStamp::now($this->clock)]);
 
         return $response;
     }
@@ -75,7 +74,7 @@ final class HealthScreen
             return $this->render(422, 'dev.health.mail.unavailable');
         }
         try {
-            $sent = (new Mail())->send(trim($this->request->form['to'] ?? ''), 'Innesto test mail', "This test mail was sent from the Innesto Developer area.\n");
+            $sent = (new Mail())->send(trim($this->request->form['to'] ?? ''), $this->template->text('dev.health.mail.subject'), $this->template->text('dev.health.mail.body') . "\n");
         } catch (InvalidArgumentException) {
             return $this->render(422, 'dev.health.mail.address');
         }
@@ -125,10 +124,5 @@ final class HealthScreen
             'tail' => array_reverse(array_slice($entries, -self::TAIL)),
             'probes' => $this->selfCheck->probes(),
         ]);
-    }
-
-    private function now(): string
-    {
-        return $this->clock->now()->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z');
     }
 }
