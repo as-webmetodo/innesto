@@ -6,6 +6,8 @@ declare(strict_types=1);
 
 namespace Innesto\Roots;
 
+use InvalidArgumentException;
+
 /** What a Screen answers: a page Roots puts inside its shell, or a redirect to one of the Module's Screens. */
 final class ScreenResult
 {
@@ -14,9 +16,16 @@ final class ScreenResult
     {
     }
 
-    /** $html is the Screen's content, already escaped by its template. */
+    /**
+     * $html is the Screen's content, already escaped by its template; $status
+     * is a success or error status: a redirect is redirect()'s.
+     */
     public static function page(string $html, int $status = 200): self
     {
+        if ($status < 200 || $status > 599 || ($status >= 300 && $status < 400)) {
+            throw new InvalidArgumentException("A Screen page cannot answer status $status");
+        }
+
         return new self($status, $html, null, []);
     }
 
