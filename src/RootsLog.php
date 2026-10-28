@@ -7,6 +7,7 @@ declare(strict_types=1);
 namespace Innesto\Roots;
 
 use DateTimeZone;
+use Innesto\Roots\Store\Schema;
 use RuntimeException;
 
 /**
@@ -38,7 +39,7 @@ final class RootsLog
             'event' => $event,
             'message' => $message,
             'context' => (object) $context,
-        ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE) . "\n";
+        ], Schema::JSON_FLAGS | JSON_INVALID_UTF8_SUBSTITUTE) . "\n";
 
         $lock = fopen("$this->dir/roots-log.lock", 'c') ?: throw new RuntimeException('Cannot open the Roots log lock');
         try {

@@ -22,13 +22,7 @@ final class Response
     /** The first value of header $name, if any. */
     public function header(string $name): ?string
     {
-        foreach ($this->headers as [$header, $value]) {
-            if (strcasecmp($header, $name) === 0) {
-                return $value;
-            }
-        }
-
-        return null;
+        return $this->headers($name)[0] ?? null;
     }
 
     /** @return list<string> every value of header $name */

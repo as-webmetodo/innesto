@@ -60,15 +60,13 @@ final class DeveloperArea
         if (!self::sameOrigin($request)) {
             $this->log->write('warning', 'roots', 'csrf.refused', 'A Developer-area form came from another origin', ['ip' => $request->ip]);
 
-            return Pages::html($this->template, 403, 'message', ['title' => 'dev.title', 'text' => 'dev.error.forbidden']);
+            return $this->forbidden();
         }
         $action = $request->form['action'] ?? '';
         if ($action === 'setup' || $action === 'signin') {
-            $wait = $this->throttle->retryAfter($request->ip);
-            if ($wait !== null) {
-                $this->log->write('warning', 'roots', 'signin.throttled', 'Sign-in refused: too many failures', ['ip' => $request->ip, 'retry_after' => $wait]);
-
-                return $this->signedOutPage(429, 'dev.error.throttled', ['seconds' => $wait])->withHeader('Retry-After', (string) $wait);
+            $throttled = $this->throttled($request, 'Sign-in refused: too many failures', $this->signedOutPage(...));
+            if ($throttled !== null) {
+                return $throttled;
             }
 
             return $action === 'setup' ? $this->setup($request) : $this->signIn($request);
@@ -76,7 +74,7 @@ final class DeveloperArea
         if ($session === null || $token === null || !hash_equals($session['csrf'], $request->form['csrf'] ?? '')) {
             $this->log->write('warning', 'roots', 'csrf.refused', 'A Developer-area form had no valid CSRF token', ['ip' => $request->ip]);
 
-            return Pages::html($this->template, 403, 'message', ['title' => 'dev.title', 'text' => 'dev.error.forbidden']);
+            return $this->forbidden();
         }
 
         return match ($action) {
@@ -111,12 +109,11 @@ final class DeveloperArea
             return $this->signedOutPage(422, 'dev.error.code');
         }
         $password = $request->form['password'] ?? '';
-        if (!self::longEnough($password)) {
+        if (!self::acceptablePassword($password)) {
             return $this->signedOutPage(422, 'dev.error.password_short');
         }
-        $this->content->put('credentials', ['id' => 'developer', 'hash' => password_hash($password, PASSWORD_DEFAULT)]);
+        $this->setPassword($password);
         $this->setupCode->consume();
-        $this->sessions->endAll();
         $this->log->write('info', 'roots', 'setup.completed', 'Setup code used; Developer password set', ['ip' => $request->ip]);
 
         return $this->signedIn($request);
@@ -144,11 +141,9 @@ final class DeveloperArea
 
     private function changePassword(Request $request, string $csrf): Response
     {
-        $wait = $this->throttle->retryAfter($request->ip);
-        if ($wait !== null) {
-            $this->log->write('warning', 'roots', 'signin.throttled', 'Password change refused: too many failures', ['ip' => $request->ip, 'retry_after' => $wait]);
-
-            return $this->homePage($csrf, 429, 'dev.error.throttled', ['seconds' => $wait])->withHeader('Retry-After', (string) $wait);
+        $throttled = $this->throttled($request, 'Password change refused: too many failures', fn (int $status, string $error, array $errorParams): Response => $this->homePage($csrf, $status, $error, $errorParams));
+        if ($throttled !== null) {
+            return $throttled;
         }
         $hash = $this->passwordHash();
         if ($hash === null || !password_verify($request->form['current'] ?? '', $hash)) {
@@ -159,11 +154,10 @@ final class DeveloperArea
         }
         $this->throttle->succeed($request->ip);
         $password = $request->form['password'] ?? '';
-        if (!self::longEnough($password)) {
+        if (!self::acceptablePassword($password)) {
             return $this->homePage($csrf, 422, 'dev.error.password_short');
         }
-        $this->content->put('credentials', ['id' => 'developer', 'hash' => password_hash($password, PASSWORD_DEFAULT)]);
-        $this->sessions->endAll();
+        $this->setPassword($password);
         $this->log->write('info', 'roots', 'password.changed', 'Developer password changed; every Developer session signed out', ['ip' => $request->ip]);
 
         return Response::redirect($request->basePath . 'dev/')->withHeader('Set-Cookie', $this->cookie($request, ''));
@@ -174,6 +168,34 @@ final class DeveloperArea
         $this->throttle->succeed($request->ip);
 
         return Response::redirect($request->basePath . 'dev/')->withHeader('Set-Cookie', $this->cookie($request, $this->sessions->start()));
+    }
+
+    /**
+     * The 429 page with Retry-After while $request's IP must wait, else null.
+     *
+     * @param callable(int, string, array<string, string|int>): Response $page
+     */
+    private function throttled(Request $request, string $message, callable $page): ?Response
+    {
+        $wait = $this->throttle->retryAfter($request->ip);
+        if ($wait === null) {
+            return null;
+        }
+        $this->log->write('warning', 'roots', 'signin.throttled', $message, ['ip' => $request->ip, 'retry_after' => $wait]);
+
+        return $page(429, 'dev.error.throttled', ['seconds' => $wait])->withHeader('Retry-After', (string) $wait);
+    }
+
+    /** The new Developer password; every Developer session ends. */
+    private function setPassword(string $password): void
+    {
+        $this->content->put('credentials', ['id' => 'developer', 'hash' => password_hash($password, PASSWORD_DEFAULT)]);
+        $this->sessions->endAll();
+    }
+
+    private function forbidden(): Response
+    {
+        return Pages::html($this->template, 403, 'message', ['title' => 'dev.title', 'text' => 'dev.error.forbidden']);
     }
 
     /** @param array<string, string|int> $errorParams */
@@ -209,7 +231,7 @@ final class DeveloperArea
     }
 
     /** At least 12 characters of valid UTF-8, without the NUL byte bcrypt refuses. */
-    private static function longEnough(string $password): bool
+    private static function acceptablePassword(string $password): bool
     {
         $characters = preg_match_all('/./su', $password);
 
