@@ -38,7 +38,7 @@ final class ModulesScreen
                 'state' => $module['state'],
                 'halt' => $module['halt'],
                 'fault' => $this->fence->fault($id),
-                'gap' => array_values(array_diff($this->shared->enabledLocales, $this->modules->covered($id))),
+                'gap' => $module['manifest'] === null ? [] : array_values(array_diff($this->shared->enabledLocales, $this->modules->covered($id))),
                 'screens' => $module['state'] === Modules::ACTIVE && $module['halt'] === null && $module['manifest'] !== null
                     ? array_keys(array_filter($module['manifest']->screens, static fn (string $side): bool => $side === 'developer'))
                     : [],

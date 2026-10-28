@@ -151,6 +151,30 @@ test('a Module Roots cannot run is listed as Halted with the reason, and the oth
     'newer PHP' => ['acme.menu', ['requires' => ['roots_api' => 1, 'php' => '99.0', 'capabilities' => ['sms'], 'optional' => []]], 'Unmet requirements: PHP 99.0, sms'],
 ]);
 
+test('a folder without a Manifest is not reported as missing locales', function (): void {
+    $install = install();
+    uploadManifest($install, 'Acme-Menu', []);
+    $token = confirmedDeveloper($install);
+
+    $section = moduleSection(devPage($install, $token, ['screen' => 'modules'])->body, 'Acme-Menu');
+
+    expect($section)->toContain('Halted')
+        ->and($section)->not->toContain('It has no text');
+});
+
+test('a Manifest that prints Halts its Module, and what it printed never reaches the page', function (): void {
+    $install = install();
+    uploadModules($install, ORARIO);
+    uploadManifest($install, 'acme.noisy', "<?php\necho 'NOISE';\nreturn [];\n");
+    $token = confirmedDeveloper($install);
+
+    $page = devPage($install, $token, ['screen' => 'modules']);
+
+    expect($page->body)->not->toContain('NOISE')
+        ->and(moduleSection($page->body, 'acme.noisy'))->toContain('module.php must not print anything')
+        ->and(moduleSection($page->body, 'in.hours'))->not->toContain('Halted');
+});
+
 test('a Store schema version that differs from the Manifest\'s Halts the Module, until its data is deleted', function (): void {
     $install = install();
     uploadModules($install, ORARIO);

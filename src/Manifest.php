@@ -67,10 +67,17 @@ final class Manifest
         if (!is_file($file)) {
             throw new UnexpectedValueException('module.php is missing');
         }
+        // Whatever it prints is held back: it would land in the Developer area's page.
+        ob_start();
         try {
             $manifest = (static fn (string $__file): mixed => require $__file)($file);
         } catch (Throwable $error) {
             throw new UnexpectedValueException('module.php cannot be read: ' . $error->getMessage(), 0, $error);
+        } finally {
+            $printed = (string) ob_get_clean();
+        }
+        if ($printed !== '') {
+            throw new UnexpectedValueException('module.php must not print anything');
         }
         if (!is_array($manifest) || !self::hasKeys($manifest, self::KEYS)) {
             throw new UnexpectedValueException('module.php must return an array with exactly the keys ' . implode(', ', self::KEYS));
