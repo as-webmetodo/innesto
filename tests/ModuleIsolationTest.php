@@ -38,13 +38,17 @@ foreach (shippedModules() as $id => [, $namespace]) {
     });
 }
 
-test('Module code never reads superglobals', function (string $src): void {
-    $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($src, FilesystemIterator::SKIP_DOTS));
+test('Module code never reads superglobals', function (string $dir): void {
+    $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS));
     foreach ($files as $file) {
         assert($file instanceof SplFileInfo);
+        // Templates and the Manifest are Module code too; its tests are not shipped.
+        if ($file->getExtension() !== 'php' || str_starts_with($file->getPathname(), "$dir/tests/")) {
+            continue;
+        }
         $variables = array_filter(token_get_all((string) file_get_contents($file->getPathname())), static fn (mixed $token): bool => is_array($token) && $token[0] === T_VARIABLE);
         $superglobals = array_intersect(array_column($variables, 1), ['$GLOBALS', '$_SERVER', '$_GET', '$_POST', '$_FILES', '$_COOKIE', '$_SESSION', '$_REQUEST', '$_ENV']);
 
         expect($superglobals)->toBe([], $file->getPathname() . ' reads a superglobal');
     }
-})->with(array_map(static fn (array $module): array => [$module[0]], shippedModules()));
+})->with(array_map(static fn (array $module): array => [dirname($module[0])], shippedModules()));
