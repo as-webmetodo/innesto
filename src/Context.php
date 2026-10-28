@@ -56,10 +56,13 @@ final class Context
         $this->store->put(Manifest::SETTINGS, ['id' => self::SETTINGS] + $settings);
     }
 
-    /** @param array<string, string|int> $params */
-    public function text(string $key, array $params = []): string
+    /**
+     * @param array<string, string|int> $params
+     * @param string|null $locale another locale than this call's, such as the Default locale for stored data
+     */
+    public function text(string $key, array $params = [], ?string $locale = null): string
     {
-        return $this->catalogue->text($this->locale, $key, $params);
+        return $this->catalogue->text($locale ?? $this->locale, $key, $params);
     }
 
     /** @param array<string, string|int> $params */

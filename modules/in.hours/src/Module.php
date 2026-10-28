@@ -24,7 +24,7 @@ final class Module implements RootsModule
         $default = $context->shared->defaultLocale;
         $context->store->put('schedules', [
             'id' => self::MAIN,
-            'name' => [$default => $context->catalogue->text($default, 'schedule.main')],
+            'name' => [$default => $context->text('schedule.main', [], $default)],
             'timezone' => $context->shared->installTimezone,
             'position' => 0,
             'weekly' => array_fill_keys(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'], []),
