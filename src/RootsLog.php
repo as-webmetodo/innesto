@@ -13,7 +13,8 @@ use RuntimeException;
 /**
  * The Roots log: one guarded file of JSON lines in the Data directory, kept in
  * two generations. Appends and rotation happen under one lock file; an `ip`
- * in the context is always truncated (/24 for IPv4, /48 for IPv6).
+ * in the context is always truncated (/24 for IPv4, /48 for IPv6). The time
+ * of the latest error line is kept in a guarded file beside it.
  */
 final class RootsLog
 {
@@ -31,8 +32,9 @@ final class RootsLog
         if (is_string($context['ip'] ?? null)) {
             $context['ip'] = self::truncateIp($context['ip']);
         }
+        $time = $this->clock->now()->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z');
         $line = json_encode([
-            'time' => $this->clock->now()->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z'),
+            'time' => $time,
             'request' => $this->requestId,
             'level' => $level,
             'source' => $source,
@@ -41,7 +43,7 @@ final class RootsLog
             'context' => (object) $context,
         ], Schema::JSON_FLAGS | JSON_INVALID_UTF8_SUBSTITUTE) . "\n";
 
-        $this->locked(function () use ($line): void {
+        $this->locked(function () use ($line, $level, $time): void {
             $file = "$this->dir/roots-log.php";
             clearstatcache(true, $file);
             if (is_file($file) && filesize($file) > self::ROTATE_AT) {
@@ -50,7 +52,19 @@ final class RootsLog
             clearstatcache(true, $file);
             $header = !is_file($file) || filesize($file) === 0 ? self::GUARD : '';
             file_put_contents($file, $header . $line, FILE_APPEND);
+            if ($level === 'error') {
+                file_put_contents("$this->dir/roots-log-error.php", self::GUARD . $time);
+            }
         });
+    }
+
+    /** The time of the latest error line, so the home badge never reads the log itself. */
+    public function lastError(): ?string
+    {
+        $file = "$this->dir/roots-log-error.php";
+        $time = is_file($file) ? substr((string) file_get_contents($file), strlen(self::GUARD)) : '';
+
+        return $time === '' ? null : $time;
     }
 
     /** @return list<array<string, mixed>> the lines of both generations, oldest first */

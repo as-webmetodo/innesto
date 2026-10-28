@@ -55,3 +55,25 @@ test('past about 1 MB the log is renamed over its one previous generation', func
     expect(array_column(logLines("$dir/roots-log.1.php"), 'event'))->toBe(['big'])
         ->and(array_column(logLines("$dir/roots-log.php"), 'event'))->toBe(['after']);
 });
+
+test('the log keeps the time of its latest error, guarded, for the home badge', function (): void {
+    $dir = logDir();
+    $clock = new FixedClock(new DateTimeImmutable('2026-10-27T10:00:00Z'));
+    $log = new RootsLog($dir, $clock, 'req1');
+    $log->write('error', 'acme.failing', 'module.fault', 'RuntimeException: boom');
+    $clock->advance(60);
+
+    $log->write('warning', 'roots', 'php.warning', 'Undefined variable');
+    $log->write('info', 'roots', 'setup.completed', 'Setup code used');
+
+    expect($log->lastError())->toBe('2026-10-27T10:00:00Z')
+        ->and(file_get_contents("$dir/roots-log-error.php"))->toStartWith("<?php exit; ?>\n");
+});
+
+test('a log without errors has no latest error', function (): void {
+    $log = new RootsLog(logDir(), new FixedClock(new DateTimeImmutable('2026-10-27T10:00:00Z')), 'req1');
+
+    $log->write('info', 'roots', 'setup.completed', 'Setup code used');
+
+    expect($log->lastError())->toBeNull();
+});

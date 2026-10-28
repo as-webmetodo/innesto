@@ -93,19 +93,10 @@ final class HealthScreen
             return true;
         }
         $seen = $this->runtime->get('health', 'seen')['time'] ?? '';
-        $seen = is_string($seen) ? $seen : '';
-        foreach ($this->fence->faults() as $fault) {
-            if ($fault['time'] > $seen) {
-                return true;
-            }
-        }
-        foreach ($this->log->entries() as $entry) {
-            if (($entry['level'] ?? null) === 'error' && is_string($entry['time'] ?? null) && $entry['time'] > $seen) {
-                return true;
-            }
-        }
+        $error = $this->log->lastError();
 
-        return false;
+        // Module faults are logged as errors too.
+        return $error !== null && $error > (is_string($seen) ? $seen : '');
     }
 
     /** @return list<Finding> the latest server and browser findings */

@@ -98,16 +98,18 @@ test('the home badge shows for a Warn or a Fail, and for an error until the Heal
 
 test('a Module error raises the badge until the Health Screen, which lists it, is opened', function (): void {
     $install = install();
+    uploadModules($install, FAKE_MODULES . '/acme.failing');
     $token = confirmedDeveloper($install);
     devPage($install, $token, ['screen' => 'health']);
     $install['clock']->advance(300);
-    rootsStores($install)->runtime->put('faults', ['id' => 'in.hours', 'count' => 2, 'message' => 'RuntimeException: boom', 'time' => '2026-10-27T10:05:00Z']);
+    // Its onActivate throws: a fenced fault.
+    devPost($install, $token, ['action' => 'activate', 'module' => 'acme.failing']);
 
     $badge = homeBadge($install, $token);
     $page = devPage($install, $token, ['screen' => 'health']);
 
     expect($badge)->toBeTrue()
-        ->and($page->body)->toContain('in.hours: Errors: 2. Last, at 2026-10-27T10:05:00Z: RuntimeException: boom')
+        ->and($page->body)->toContain('acme.failing: Errors: 1. Last, at 2026-10-27T10:05:00Z')
         ->and(homeBadge($install, $token))->toBeFalse();
 })->skip(fn (): bool => !extension_loaded('pdo_sqlite'), 'a host without SQLite always has a Warn');
 
