@@ -75,7 +75,29 @@ final class FaultFence
     /** @return Fault|null Module $id's error count and last error */
     public function fault(string $id): ?array
     {
-        $fault = $this->runtime->get('faults', $id);
+        return self::valid($this->runtime->get('faults', $id));
+    }
+
+    /** @return array<string, Fault> every Module's error count and last error, by Module id */
+    public function faults(): array
+    {
+        $faults = [];
+        foreach ($this->runtime->list('faults') as $fault) {
+            $valid = self::valid($fault);
+            if ($valid !== null && is_string($fault['id'] ?? null)) {
+                $faults[$fault['id']] = $valid;
+            }
+        }
+
+        return $faults;
+    }
+
+    /**
+     * @param array<string, mixed>|null $fault
+     * @return Fault|null
+     */
+    private static function valid(?array $fault): ?array
+    {
         if ($fault === null) {
             return null;
         }

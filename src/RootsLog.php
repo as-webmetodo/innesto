@@ -41,9 +41,7 @@ final class RootsLog
             'context' => (object) $context,
         ], Schema::JSON_FLAGS | JSON_INVALID_UTF8_SUBSTITUTE) . "\n";
 
-        $lock = fopen("$this->dir/roots-log.lock", 'c') ?: throw new RuntimeException('Cannot open the Roots log lock');
-        try {
-            flock($lock, LOCK_EX);
+        $this->locked(function () use ($line): void {
             $file = "$this->dir/roots-log.php";
             clearstatcache(true, $file);
             if (is_file($file) && filesize($file) > self::ROTATE_AT) {
@@ -52,6 +50,51 @@ final class RootsLog
             clearstatcache(true, $file);
             $header = !is_file($file) || filesize($file) === 0 ? self::GUARD : '';
             file_put_contents($file, $header . $line, FILE_APPEND);
+        });
+    }
+
+    /** @return list<array<string, mixed>> the lines of both generations, oldest first */
+    public function entries(): array
+    {
+        $entries = [];
+        foreach (explode("\n", $this->export()) as $line) {
+            $entry = json_decode($line, true);
+            if (is_array($entry)) {
+                /** @var array<string, mixed> $entry JSON objects, as write() makes them */
+                $entries[] = $entry;
+            }
+        }
+
+        return $entries;
+    }
+
+    /** Both generations as JSON lines, oldest first, without their guards. */
+    public function export(): string
+    {
+        return $this->locked(function (): string {
+            $lines = '';
+            foreach (["$this->dir/roots-log.1.php", "$this->dir/roots-log.php"] as $file) {
+                $lines .= is_file($file) ? substr((string) file_get_contents($file), strlen(self::GUARD)) : '';
+            }
+
+            return $lines;
+        });
+    }
+
+    /**
+     * Runs $work under the log's lock, which appends and rotation share.
+     *
+     * @template T
+     * @param callable(): T $work
+     * @return T
+     */
+    private function locked(callable $work): mixed
+    {
+        $lock = fopen("$this->dir/roots-log.lock", 'c') ?: throw new RuntimeException('Cannot open the Roots log lock');
+        try {
+            flock($lock, LOCK_EX);
+
+            return $work();
         } finally {
             flock($lock, LOCK_UN);
             fclose($lock);

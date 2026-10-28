@@ -10,17 +10,17 @@ use Innesto\Roots\Store\FileStore;
 use Innesto\Roots\Store\SqliteStore;
 use Innesto\Roots\Store\Store;
 use InvalidArgumentException;
+use LogicException;
 use PDO;
 use Throwable;
 
 /**
  * Roots' two Stores: content (credentials, the Shared config, the Roots
  * settings and each Module's state; its revision feeds the ETag) and runtime
- * (sessions, throttling and Module faults; it never does), and one Store per
- * Module on the same backend. The backend is chosen when Roots' Stores are
- * created and stays fixed: SQLite only with SQLite 3.27+ and a Data directory
- * outside the webroot, guarded files otherwise. #30's HTTP
- * probe will let a proven-unreachable in-webroot directory use SQLite too.
+ * (sessions, throttling, Module faults and the Self-check; it never does), and one Store per
+ * Module on the same backend. Roots' Stores start on guarded files; the first
+ * setup moves them to SQLite when the Self-check allows it, and the backend
+ * then stays fixed.
  *
  * @phpstan-import-type StoreSchema from Store
  */
@@ -32,9 +32,10 @@ final class RootsStores
         'sessions' => ['fields' => ['area' => 'string', 'expires' => 'int']],
         'throttle' => ['fields' => ['last' => 'int']],
         'faults' => ['fields' => []],
+        'health' => ['fields' => []],
     ]];
 
-    private function __construct(public readonly Store $content, public readonly Store $runtime, private readonly string $dir, private readonly bool $sqlite)
+    private function __construct(public readonly Store $content, public readonly Store $runtime, private readonly string $dir, public readonly bool $sqlite)
     {
     }
 
@@ -73,29 +74,54 @@ final class RootsStores
     public static function open(DataDirectory $data): self
     {
         $base = "$data->path/roots-content";
-        $sqlite = match (true) {
-            is_file("$base.sqlite") => true,
-            is_file("$base.php") => false,
-            default => !$data->insideWebroot && self::sqliteAvailable(),
-        };
 
-        return $sqlite
+        return is_file("$base.sqlite")
             ? new self(SqliteStore::open("$base.sqlite", self::CONTENT), SqliteStore::open("$data->path/roots-runtime.sqlite", self::RUNTIME), $data->path, true)
             : new self(FileStore::open("$base.php", self::CONTENT), FileStore::open("$data->path/roots-runtime.php", self::RUNTIME), $data->path, false);
     }
 
-    private static function sqliteAvailable(): bool
+    /**
+     * Copies Roots' two Stores from guarded files into SQLite and removes the
+     * files. Only the first setup does this, before any Module has a Store,
+     * and as the last write of its request. The content Store moves last: its
+     * SQLite file is what open() goes by.
+     */
+    public function moveToSqlite(): void
+    {
+        $this->sqlite && throw new LogicException('Roots\' Stores are already on SQLite');
+        foreach ([['roots-runtime', self::RUNTIME, $this->runtime], ['roots-content', self::CONTENT, $this->content]] as [$name, $schema, $from]) {
+            $temp = "$this->dir/$name.sqlite.new";
+            is_file($temp) && unlink($temp);
+            $to = SqliteStore::open($temp, $schema);
+            $to->transaction(static function () use ($schema, $from, $to): void {
+                foreach (array_keys($schema['collections']) as $collection) {
+                    foreach ($from->list($collection) as $document) {
+                        $to->put($collection, $document);
+                    }
+                }
+            });
+            rename($temp, "$this->dir/$name.sqlite");
+        }
+        foreach (['roots-runtime', 'roots-content'] as $name) {
+            foreach (["$this->dir/$name.php", "$this->dir/$name.php.lock"] as $file) {
+                is_file($file) && unlink($file);
+            }
+        }
+    }
+
+    /** The SQLite version PDO links, or null without `pdo_sqlite`. */
+    public static function sqliteVersion(): ?string
     {
         if (!extension_loaded('pdo_sqlite')) {
-            return false;
+            return null;
         }
         try {
             $statement = (new PDO('sqlite::memory:'))->query('SELECT sqlite_version()');
             $version = $statement === false ? false : $statement->fetchColumn();
         } catch (Throwable) {
-            return false;
+            return null;
         }
 
-        return is_string($version) && version_compare($version, '3.27', '>=');
+        return is_string($version) ? $version : null;
     }
 }

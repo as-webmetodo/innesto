@@ -13,7 +13,7 @@ function inContainer(command) {
 
 test.beforeEach(async ({ page }) => {
   // A fresh upload, walked through the first run and the Shared config.
-  inContainer('rm -rf /var/www/html/innesto/data-path.php /var/www/html/innesto/data-* /var/www/innesto-data-*');
+  inContainer('rm -rf /var/www/html/innesto/data-path.php /var/www/html/innesto/data-* /var/innesto-data-*');
   await page.goto('dev/');
   const setupCodeFile = inContainer(`cat "$(php -r "define('INNESTO_ROOTS', true); echo require '/var/www/html/innesto/data-path.php';")/setup-code.php"`);
   await page.getByLabel('Setup code').fill(/Setup code: (\S+)/.exec(setupCodeFile)[1]);

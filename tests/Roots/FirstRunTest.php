@@ -15,7 +15,10 @@ test('the Developer area refuses plain HTTP', function (): void {
     $response = install()['app']->handle(request('GET', 'dev', https: false));
 
     expect($response->status)->toBe(403)
-        ->and($response->body)->toContain('HTTPS');
+        ->and($response->body)->toContain('HTTPS')
+        // The browser-run probe explains a proxy that reports HTTPS only through X-Forwarded-*.
+        ->and($response->body)->toContain('<p id="proxied" hidden>')
+        ->and($response->body)->toContain("location.protocol === 'https:'");
 });
 
 test('plain HTTP is allowed on a loopback host', function (string $host): void {
@@ -49,7 +52,7 @@ test('the Setup code and a new password sign the Developer in', function (): voi
     $install = install();
     $install['app']->handle(request('GET', 'dev'));
 
-    $response = $install['app']->handle(request('POST', 'dev', ['action' => 'setup', 'code' => strtolower(setupCode($install)), 'password' => PASSWORD], headers: ORIGIN));
+    $response = $install['app']->handle(request('POST', 'dev', ['code' => strtolower(setupCode($install))] + setupForm($install), headers: ORIGIN));
 
     expect($response->status)->toBe(303)
         ->and($response->header('Location'))->toBe('/innesto/dev/')
@@ -62,7 +65,7 @@ test('the session cookie is HttpOnly, Secure, SameSite=Strict and scoped to dev/
     $install = install();
     $install['app']->handle(request('GET', 'dev'));
 
-    $response = $install['app']->handle(request('POST', 'dev', ['action' => 'setup', 'code' => setupCode($install), 'password' => PASSWORD], headers: ORIGIN));
+    $response = $install['app']->handle(request('POST', 'dev', setupForm($install, password: PASSWORD), headers: ORIGIN));
 
     expect($response->header('Set-Cookie'))->toMatch('~^innesto_dev=[0-9a-f]{64}; Path=/innesto/dev/; Secure; HttpOnly; SameSite=Strict$~');
 });
@@ -85,7 +88,7 @@ test('a Developer password needs at least 12 characters', function (string $pass
     $install = install();
     $install['app']->handle(request('GET', 'dev'));
 
-    $response = $install['app']->handle(request('POST', 'dev', ['action' => 'setup', 'code' => setupCode($install), 'password' => $password], headers: ORIGIN));
+    $response = $install['app']->handle(request('POST', 'dev', setupForm($install, password: $password), headers: ORIGIN));
 
     expect($response->status)->toBe($status);
 })->with([
@@ -114,14 +117,20 @@ test('when <roots> is not writable, the page shows the data-path.php to upload',
         ->and($response->body)->toContain(htmlspecialchars("defined('INNESTO_ROOTS') || exit;"));
 });
 
-test('Roots\' Stores use SQLite outside the webroot when it is available', function (): void {
+test('Roots\' Stores start on guarded files and move to SQLite when setup completes, if it is available', function (): void {
     $install = install();
-
     $install['app']->handle(request('GET', 'dev'));
+    $before = [is_file(dataPath($install) . '/roots-content.php'), is_file(dataPath($install) . '/roots-runtime.php')];
 
-    $backend = extension_loaded('pdo_sqlite') ? 'sqlite' : 'php';
-    expect(is_file(dataPath($install) . "/roots-content.$backend"))->toBeTrue()
-        ->and(is_file(dataPath($install) . "/roots-runtime.$backend"))->toBeTrue();
+    $token = completeSetup($install);
+
+    [$backend, $other] = extension_loaded('pdo_sqlite') ? ['sqlite', 'php'] : ['php', 'sqlite'];
+    expect($before)->toBe([true, true])
+        ->and(is_file(dataPath($install) . "/roots-content.$backend"))->toBeTrue()
+        ->and(is_file(dataPath($install) . "/roots-runtime.$backend"))->toBeTrue()
+        ->and([...glob(dataPath($install) . "/roots-content.$other*") ?: [], ...glob(dataPath($install) . "/roots-runtime.$other*") ?: []])->toBe([])
+        // The password and the session moved with the Stores.
+        ->and(signedInPage($install, $token)->body)->toContain('value="signout"');
 });
 
 test('Roots\' Stores use guarded files in a Data directory inside the webroot', function (): void {
@@ -139,7 +148,7 @@ test('under the localhost override the cookie leaves out Secure, which browsers 
     $install = install();
     $install['app']->handle(request('GET', 'dev', host: 'localhost:8080', https: false));
 
-    $response = $install['app']->handle(request('POST', 'dev', ['action' => 'setup', 'code' => setupCode($install), 'password' => PASSWORD], headers: ['origin' => 'http://localhost:8080'], host: 'localhost:8080', https: false));
+    $response = $install['app']->handle(request('POST', 'dev', setupForm($install, password: PASSWORD), headers: ['origin' => 'http://localhost:8080'], host: 'localhost:8080', https: false));
 
     expect($response->header('Set-Cookie'))->toMatch('~^innesto_dev=[0-9a-f]{64}; Path=/innesto/dev/; HttpOnly; SameSite=Strict$~');
 });

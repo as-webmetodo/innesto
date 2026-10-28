@@ -109,7 +109,7 @@ test('past 100 failures an hour only IPs that failed in that hour are refused', 
     expect($failedBefore->status)->toBe(429)
         ->and($failedBefore->header('Retry-After'))->toBe('3600');
 
-    $clean = $install['app']->handle(request('POST', 'dev', ['action' => 'setup', 'code' => setupCode($install), 'password' => PASSWORD], headers: ORIGIN, ip: '198.51.100.9'));
+    $clean = $install['app']->handle(request('POST', 'dev', setupForm($install, password: PASSWORD), headers: ORIGIN, ip: '198.51.100.9'));
     expect($clean->status)->toBe(303);
 });
 

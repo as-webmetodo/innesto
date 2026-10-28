@@ -4,12 +4,12 @@
 # way an FTP upload would leave it. INNESTO_DATA_OUTSIDE=0 leaves no writable
 # directory outside the webroot (spec §7.7).
 set -eu
-rm -rf /var/www/html/innesto /var/www/innesto-data-*
+rm -rf /var/www/html/innesto /var/innesto-data-*
 mkdir -p /var/www/html/innesto
 tar -C /src --exclude=./.git --exclude=./.claude --exclude=./node_modules --exclude=./vendor --exclude=./test-results --exclude=./playwright-report -cf - . \
     | tar -C /var/www/html/innesto -xf -
 chown -R www-data:www-data /var/www/html/innesto
 if [ "${INNESTO_DATA_OUTSIDE:-1}" = 1 ]; then
-    chown www-data:www-data /var/www
+    chown www-data:www-data /var
 fi
 exec apache2-foreground

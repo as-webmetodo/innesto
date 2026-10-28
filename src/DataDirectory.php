@@ -13,14 +13,32 @@ use RuntimeException;
  * writable directory outside the webroot and creates `innesto-data-<random>/`
  * there, else `<roots>/data-<random>/` denied to HTTP; the choice is recorded
  * in `<roots>/data-path.php`, which the Developer may edit to move it.
+ *
+ * A directory outside this site's webroot may still sit in another site's,
+ * as on an addon domain whose walk stops at `public_html`. No probe from
+ * this origin can reach it, so a name that hosts give webroots marks it:
+ * any ancestor with a distinctive one, or a parent with a generic one.
  */
 final class DataDirectory
 {
     private const DENY_ALL = "Require all denied\n";
 
-    /** @param string|null $upload the data-path.php to upload over FTP when `<roots>` is not writable */
-    private function __construct(public readonly string $path, public readonly bool $insideWebroot, public readonly ?string $upload)
-    {
+    private const WEBROOT_NAMES = ['public_html', 'private_html', 'htdocs', 'httpdocs', 'httpsdocs', 'wwwroot'];
+
+    private const GENERIC_WEBROOT_NAMES = ['www', 'html', 'web', 'public'];
+
+    /**
+     * @param bool $insideOtherWebroot outside this site's webroot, but named like another site's
+     * @param string $fromRoots the path from `<roots>` to the Data directory, which a URL relative to Roots' own can follow
+     * @param string|null $upload the data-path.php to upload over FTP when `<roots>` is not writable
+     */
+    private function __construct(
+        public readonly string $path,
+        public readonly bool $insideWebroot,
+        public readonly bool $insideOtherWebroot,
+        public readonly string $fromRoots,
+        public readonly ?string $upload,
+    ) {
     }
 
     /** @param string $top the highest directory the walk may reach */
@@ -36,7 +54,7 @@ final class DataDirectory
 
             $path = self::create($path, $webroot);
 
-            return new self($path, self::isInside($path, $webroot), null);
+            return self::at($path, $roots, $webroot, null);
         }
 
         $suffix = bin2hex(random_bytes(8));
@@ -47,7 +65,7 @@ final class DataDirectory
                 throw new RuntimeException('No writable directory for the Data directory, outside the webroot or in <roots>');
             }
 
-            return new self($path, self::isInside($path, $webroot), $contents);
+            return self::at($path, $roots, $webroot, $contents);
         }
         $path = self::create($path, $webroot);
         file_put_contents($record, $contents, LOCK_EX);
@@ -56,7 +74,34 @@ final class DataDirectory
         // call would only raise a warning.
         function_exists('opcache_invalidate') && ini_get('opcache.restrict_api') === '' && opcache_invalidate($record, true);
 
-        return new self($path, self::isInside($path, $webroot), null);
+        return self::at($path, $roots, $webroot, null);
+    }
+
+    private static function at(string $path, string $roots, string $webroot, ?string $upload): self
+    {
+        $inside = self::isInside($path, $webroot);
+
+        return new self($path, $inside, !$inside && self::namedLikeWebroot($path), self::relative(self::canonical($roots), $path), $upload);
+    }
+
+    private static function namedLikeWebroot(string $path): bool
+    {
+        $parent = dirname($path);
+
+        return array_intersect(explode('/', $parent), self::WEBROOT_NAMES) !== [] || in_array(basename($parent), self::GENERIC_WEBROOT_NAMES, true);
+    }
+
+    /** The relative path from directory $from to $to, both canonical. */
+    private static function relative(string $from, string $to): string
+    {
+        $from = array_values(array_diff(explode('/', $from), ['']));
+        $to = array_values(array_diff(explode('/', $to), ['']));
+        while ($from !== [] && $to !== [] && $from[0] === $to[0]) {
+            array_shift($from);
+            array_shift($to);
+        }
+
+        return implode('/', [...array_fill(0, count($from), '..'), ...$to]);
     }
 
     private static function outsideWebroot(string $roots, string $webroot, string $top, string $suffix): ?string
@@ -81,7 +126,7 @@ final class DataDirectory
         if (!is_writable($path)) {
             throw new RuntimeException("The Data directory $path is not writable");
         }
-        if (self::isInside($path, $webroot) && !is_file("$path/.htaccess")) {
+        if ((self::isInside($path, $webroot) || self::namedLikeWebroot($path)) && !is_file("$path/.htaccess")) {
             file_put_contents("$path/.htaccess", self::DENY_ALL);
         }
 

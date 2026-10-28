@@ -13,7 +13,7 @@ function inContainer(command) {
 
 test.beforeEach(() => {
   // Back to a fresh upload: no recorded Data directory.
-  inContainer('rm -rf /var/www/html/innesto/data-path.php /var/www/html/innesto/data-* /var/www/innesto-data-*');
+  inContainer('rm -rf /var/www/html/innesto/data-path.php /var/www/html/innesto/data-* /var/innesto-data-*');
 });
 
 test.use({ timezoneId: 'Europe/Rome' });

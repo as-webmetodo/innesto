@@ -9,7 +9,7 @@ test('a form post from another origin is refused', function (?string $origin, ?s
     $install['app']->handle(request('GET', 'dev'));
     $headers = array_filter(['origin' => $origin, 'referer' => $referer], is_string(...));
 
-    $response = $install['app']->handle(request('POST', 'dev', ['action' => 'setup', 'code' => setupCode($install), 'password' => PASSWORD], headers: $headers));
+    $response = $install['app']->handle(request('POST', 'dev', setupForm($install, password: PASSWORD), headers: $headers));
 
     expect($response->status)->toBe(403)
         ->and(is_file(dataPath($install) . '/setup-code.php'))->toBeTrue();
@@ -24,7 +24,7 @@ test('a same-origin Referer is accepted without an Origin header', function (): 
     $install = install();
     $install['app']->handle(request('GET', 'dev'));
 
-    $response = $install['app']->handle(request('POST', 'dev', ['action' => 'setup', 'code' => setupCode($install), 'password' => PASSWORD], headers: ['referer' => 'https://example.com/innesto/dev/']));
+    $response = $install['app']->handle(request('POST', 'dev', setupForm($install, password: PASSWORD), headers: ['referer' => 'https://example.com/innesto/dev/']));
 
     expect($response->status)->toBe(303);
 });
@@ -131,7 +131,7 @@ test('a reset marker issues a fresh Setup code while the old password keeps work
         ->and(is_file(dataPath($install) . '/reset-marker'))->toBeFalse()
         ->and($install['app']->handle(request('POST', 'dev', ['action' => 'signin', 'password' => PASSWORD], headers: ORIGIN))->status)->toBe(303);
 
-    $install['app']->handle(request('POST', 'dev', ['action' => 'setup', 'code' => setupCode($install), 'password' => 'the recovered passphrase'], headers: ORIGIN));
+    $install['app']->handle(request('POST', 'dev', setupForm($install, password: 'the recovered passphrase'), headers: ORIGIN));
 
     expect($install['app']->handle(request('POST', 'dev', ['action' => 'signin', 'password' => PASSWORD], headers: ORIGIN))->status)->toBe(422)
         ->and(loggedEvents($install))->toBe(['setup_code.issued', 'setup.completed', 'setup_code.issued', 'setup.completed', 'signin.failed']);

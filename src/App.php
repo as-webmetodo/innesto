@@ -50,8 +50,8 @@ final class App
         }
         $catalogue = new Catalogue(self::FILES . '/locales');
         $template = new Template(self::FILES . '/templates', $catalogue, LocaleResolver::forDeveloperAreaAndClientPwa($request->header('accept-language')));
-        if (!$request->https && !self::isLoopback($request->host)) {
-            return Pages::html($template, 403, 'message', ['title' => 'dev.title', 'text' => 'dev.error.https']);
+        if (!$request->https && !$request->loopback()) {
+            return Pages::html($template, 403, 'https');
         }
         try {
             $data = DataDirectory::locate($this->roots, $this->documentRoot);
@@ -67,14 +67,8 @@ final class App
         $this->errors->attach($log, $fence);
         $modules = new Modules("$this->roots/modules", $stores, $fence, $log, $this->clock, $catalogue, $request->origin());
 
-        return (new DeveloperArea($stores->content, $stores->runtime, $data->path, $log, $this->clock, $template, $modules, $fence))->handle($request);
-    }
+        $selfCheck = new SelfCheck($stores, $data, $log, $this->clock, $request);
 
-    /** The explicit exception to HTTPS: a host name that only reaches this machine. */
-    private static function isLoopback(string $host): bool
-    {
-        $name = preg_replace('/:\d+$/', '', $host);
-
-        return in_array($name, ['localhost', '127.0.0.1', '[::1]'], true);
+        return (new DeveloperArea($stores->content, $stores->runtime, $data->path, $log, $this->clock, $template, $modules, $fence, $selfCheck))->handle($request);
     }
 }

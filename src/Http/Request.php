@@ -72,6 +72,14 @@ final class Request
         return ($this->https ? 'https' : 'http') . '://' . $this->host;
     }
 
+    /** The explicit exception to HTTPS: a host name that only reaches this machine. */
+    public function loopback(): bool
+    {
+        $name = preg_replace('/:\d+$/', '', $this->host);
+
+        return in_array($name, ['localhost', '127.0.0.1', '[::1]'], true);
+    }
+
     /** What the server says; X-Forwarded-* is never read, since any client can send it. */
     private static function httpsFromGlobals(): bool
     {

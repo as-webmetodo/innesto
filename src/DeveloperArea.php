@@ -14,11 +14,14 @@ use Innesto\Roots\Http\Response;
 use Innesto\Roots\Store\Store;
 
 /**
- * `dev/`: first run, sign-in, sign-out, password change, the config Screen
- * (which a signed-in Developer sees until the Shared config is confirmed),
- * the Modules list and the Modules' own Screens. Every POST passes the Origin/Referer check here; actions of a
+ * `dev/`: first run with the Self-check, sign-in, sign-out, password change,
+ * the config Screen (which a signed-in Developer sees until the Shared config
+ * is confirmed), the Modules list, the Health Screen and the Modules' own
+ * Screens. Every POST passes the Origin/Referer check here; actions of a
  * signed-in Developer also need the session's CSRF token. Successful posts
  * redirect (PRG).
+ *
+ * @phpstan-import-type Finding from SelfCheck
  */
 final class DeveloperArea
 {
@@ -38,13 +41,14 @@ final class DeveloperArea
 
     public function __construct(
         private readonly Store $content,
-        Store $runtime,
+        private readonly Store $runtime,
         string $dataDir,
         private readonly RootsLog $log,
-        Clock $clock,
+        private readonly Clock $clock,
         private readonly Template $template,
         private readonly Modules $modules,
         private readonly FaultFence $fence,
+        private readonly SelfCheck $selfCheck,
     ) {
         $this->setupCode = new SetupCode($dataDir);
         $this->resetMarker = "$dataDir/reset-marker";
@@ -59,17 +63,22 @@ final class DeveloperArea
         $session = $this->sessions->find($token);
         $config = $session === null ? null : new ConfigScreen($this->content, $this->log, $this->template, $request, $session['csrf'], $this->modules->enableable());
         $modules = $session === null ? null : new ModulesScreen($this->modules, $this->fence, SharedConfig::fromStore($this->content, $request->origin()), $this->template, $request, $session['csrf']);
+        $health = $session === null ? null : new HealthScreen($this->selfCheck, $this->runtime, $this->fence, $this->log, $this->clock, $this->template, $request, $session['csrf']);
         $screen = $request->query['screen'] ?? '';
-
         if ($request->method !== 'POST') {
+            // The cheap server probes re-run on every page load.
+            $session === null || $this->selfCheck->runServer();
+
             return match (true) {
-                $session === null || $config === null || $modules === null => $this->signedOutPage(200),
+                $session === null || $config === null || $modules === null || $health === null => $this->signedOutPage(200),
                 !$config->confirmed() => $config->page(),
                 // Before Roots' own Screens, so a Module Screen may share their names.
                 isset($request->query['module']) => $modules->screen(),
                 $screen === 'config' => $config->page(),
                 $screen === 'modules' => $modules->page(),
-                default => $this->homePage($session['csrf'], 200),
+                $screen === 'health' && ($request->query['download'] ?? '') === 'log' => $health->download(),
+                $screen === 'health' => $health->page(),
+                default => $this->homePage($session['csrf'], 200, attention: $health->attention()),
             };
         }
         if (!self::sameOrigin($request)) {
@@ -86,7 +95,7 @@ final class DeveloperArea
 
             return $action === 'setup' ? $this->setup($request) : $this->signIn($request);
         }
-        if ($session === null || $config === null || $modules === null || $token === null || !hash_equals($session['csrf'], $request->form['csrf'] ?? '')) {
+        if ($session === null || $config === null || $modules === null || $health === null || $token === null || !hash_equals($session['csrf'], $request->form['csrf'] ?? '')) {
             $this->log->write('warning', 'roots', 'csrf.refused', 'A Developer-area form had no valid CSRF token', ['ip' => $request->ip]);
 
             return $this->forbidden();
@@ -104,6 +113,8 @@ final class DeveloperArea
             'activate' => $modules->activate(),
             'deactivate' => $modules->deactivate(),
             'delete_data' => $modules->deleteData(),
+            'selfcheck' => $health->run(),
+            'test_mail' => $health->testMail(),
             default => Response::redirect($request->basePath . 'dev/'),
         };
     }
@@ -136,11 +147,25 @@ final class DeveloperArea
         if (!self::acceptablePassword($password)) {
             return $this->signedOutPage(422, 'dev.error.password_short');
         }
+        // Accepted only now that the Setup code is right.
+        $probes = SelfCheck::parse($request->form['probes'] ?? '');
+        if ($probes === null) {
+            return $this->signedOutPage(422, 'dev.error.probes');
+        }
+        $findings = [...$this->selfCheck->runServer(), ...$this->selfCheck->runBrowser($probes)];
+        if (SelfCheck::failed($findings)) {
+            return $this->signedOutPage(422, 'dev.error.selfcheck', findings: $findings);
+        }
+        $firstRun = $this->passwordHash() === null;
         $this->setPassword($password);
         $this->setupCode->consume();
         $this->log->write('info', 'roots', 'setup.completed', 'Setup code used; Developer password set', ['ip' => $request->ip]);
+        $response = $this->signedIn($request);
+        if ($firstRun) {
+            $this->selfCheck->settleBackend($probes, ($request->form['files'] ?? '') !== '');
+        }
 
-        return $this->signedIn($request);
+        return $response;
     }
 
     private function signIn(Request $request): Response
@@ -222,18 +247,24 @@ final class DeveloperArea
         return Pages::html($this->template, 403, 'message', ['title' => 'dev.title', 'text' => 'dev.error.forbidden']);
     }
 
-    /** @param array<string, string|int> $errorParams */
-    private function signedOutPage(int $status, ?string $error = null, array $errorParams = []): Response
+    /**
+     * @param array<string, string|int> $errorParams
+     * @param list<Finding> $findings the Self-check that refused setup
+     */
+    private function signedOutPage(int $status, ?string $error = null, array $errorParams = [], array $findings = []): Response
     {
         $vars = ['error' => $error, 'errorParams' => $errorParams, 'canSignIn' => $this->passwordHash() !== null];
+        if (!$this->setupCode->pending()) {
+            return Pages::html($this->template, $status, 'signin', $vars);
+        }
 
-        return Pages::html($this->template, $status, $this->setupCode->pending() ? 'setup' : 'signin', $vars);
+        return Pages::html($this->template, $status, 'setup', $vars + ['findings' => $findings, 'probes' => $this->selfCheck->probes()]);
     }
 
     /** @param array<string, string|int> $errorParams */
-    private function homePage(string $csrf, int $status, ?string $error = null, array $errorParams = []): Response
+    private function homePage(string $csrf, int $status, ?string $error = null, array $errorParams = [], bool $attention = false): Response
     {
-        return Pages::html($this->template, $status, 'home', ['csrf' => $csrf, 'error' => $error, 'errorParams' => $errorParams]);
+        return Pages::html($this->template, $status, 'home', ['csrf' => $csrf, 'error' => $error, 'errorParams' => $errorParams, 'attention' => $attention]);
     }
 
     private function passwordHash(): ?string

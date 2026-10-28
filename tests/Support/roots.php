@@ -58,6 +58,21 @@ const ORIGIN = ['origin' => 'https://example.com'];
 
 const PASSWORD = 'correct horse battery';
 
+/** What the browser's probes post on a host that keeps the Data directory unreachable. */
+const PROBES = ['data_txt' => false, 'data_php' => false, 'htaccess' => true, 'skew' => 0];
+
+/**
+ * The setup form as the browser posts it, with the probe results.
+ *
+ * @param array{roots: string} $install
+ * @param array<string, bool|int> $probes changes to PROBES
+ * @return array<string, string>
+ */
+function setupForm(array $install, array $probes = [], string $password = PASSWORD): array
+{
+    return ['action' => 'setup', 'code' => setupCode($install), 'password' => $password, 'probes' => json_encode(array_replace(PROBES, $probes), JSON_THROW_ON_ERROR)];
+}
+
 /** @param array{roots: string} $install */
 function dataPath(array $install): string
 {
@@ -100,7 +115,7 @@ function sessionCookie(Response $response): ?string
 function completeSetup(array $install, string $password = PASSWORD): string
 {
     $install['app']->handle(request('GET', 'dev'));
-    $response = $install['app']->handle(request('POST', 'dev', ['action' => 'setup', 'code' => setupCode($install), 'password' => $password], headers: ORIGIN));
+    $response = $install['app']->handle(request('POST', 'dev', setupForm($install, password: $password), headers: ORIGIN));
     expect($response->status)->toBe(303);
 
     return (string) sessionCookie($response);
