@@ -89,6 +89,12 @@ final class Modules
      */
     public function activate(string $id, string $locale): ?array
     {
+        return $this->locked(fn (): ?array => $this->activateLocked($id, $locale));
+    }
+
+    /** @return Halt|null */
+    private function activateLocked(string $id, string $locale): ?array
+    {
         $module = $this->all()[$id] ?? null;
         if ($module === null || $module['state'] === self::ACTIVE) {
             return ['dev.modules.error.state', []];
@@ -104,10 +110,31 @@ final class Modules
             }
         }
         $this->stores->content->put('modules', ['id' => $id, 'state' => self::ACTIVE]);
-        $this->discovered = null;
         $this->log->write('info', 'roots', 'module.activated', 'Module activated', ['module' => $id, 'from' => $module['state']]);
 
         return null;
+    }
+
+    /**
+     * Runs a lifecycle action inside a transaction of the content Store,
+     * whose lock serialises it with any other one; the state is discovered
+     * afresh under that lock, so the check and the write cannot interleave
+     * with another request's.
+     *
+     * @template T
+     * @param callable(): T $action
+     * @return T
+     */
+    private function locked(callable $action): mixed
+    {
+        return $this->stores->content->transaction(function () use ($action): mixed {
+            $this->discovered = null;
+            try {
+                return $action();
+            } finally {
+                $this->discovered = null;
+            }
+        });
     }
 
     /**
@@ -152,11 +179,15 @@ final class Modules
     /** Active → Inactive: nothing of it runs, its Store is kept. Halted Modules may be deactivated too. */
     public function deactivate(string $id): bool
     {
+        return $this->locked(fn (): bool => $this->deactivateLocked($id));
+    }
+
+    private function deactivateLocked(string $id): bool
+    {
         if (($this->all()[$id]['state'] ?? null) !== self::ACTIVE) {
             return false;
         }
         $this->stores->content->put('modules', ['id' => $id, 'state' => self::INACTIVE]);
-        $this->discovered = null;
         $this->log->write('info', 'roots', 'module.deactivated', 'Module deactivated', ['module' => $id]);
 
         return true;
@@ -165,12 +196,16 @@ final class Modules
     /** Inactive → Uploaded: the whole Store is removed. */
     public function deleteData(string $id): bool
     {
+        return $this->locked(fn (): bool => $this->deleteDataLocked($id));
+    }
+
+    private function deleteDataLocked(string $id): bool
+    {
         if (($this->all()[$id]['state'] ?? null) !== self::INACTIVE) {
             return false;
         }
         $this->stores->deleteModule($id);
         $this->stores->content->delete('modules', $id);
-        $this->discovered = null;
         $this->log->write('info', 'roots', 'module.data_deleted', 'Module data deleted', ['module' => $id]);
 
         return true;

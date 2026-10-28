@@ -536,6 +536,7 @@ The user decided these on 2026-10-28, while #32 was implemented:
 | The Screen contract ([#13]) | `Module::screen(name, Context, ScreenRequest): ScreenResult`, a page Roots puts inside its shell or a redirect to one of the Module's developer Screens; Roots gives Screen templates the session's `$csrf`. |
 | The mail service before the Self-check exists ([§3.14](#314-mail-service)) | A `mail()`-backed `Mail` with `send(to, subject, body)`, in the Context only of a Module that requires or optionally uses `mail`. |
 | When `onActivate` runs ([§3.7](#37-modules-discovery-manifest-lifecycle)) | Only on Uploaded → Active; re-activating an Inactive Module keeps its Store as it is. Halted is worked out on every load and never stored; a Store schema mismatch Halts only an Active or Inactive Module, since an Uploaded one's leftover Store is removed by its next Activate. Activation reports a locale gap but does not refuse. |
+| Concurrent lifecycle actions ([§3.7](#37-modules-discovery-manifest-lifecycle)) | Activate, Deactivate and Delete data each run inside a content Store transaction and read the Module's state afresh under its lock, so two requests never both act on one state. Only the Module's own code is fenced: Roots failing to create or commit a Module Store is Roots' error, never counted against the Module. |
 
 Defaults this spec sets without a separate question. Each is cheap to change in the plan:
 

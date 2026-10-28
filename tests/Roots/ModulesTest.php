@@ -413,3 +413,22 @@ test('when Roots cannot create a Module\'s Store, Activate is refused as Roots\'
         ->and(moduleSection(devPage($install, $token, ['screen' => 'modules'])->body, 'in.hours'))->toContain('Uploaded')
         ->and(moduleSection(devPage($install, $token, ['screen' => 'modules'])->body, 'in.hours'))->not->toContain('Errors:');
 });
+
+test('a lifecycle action re-reads the state under the content Store\'s lock, so a concurrent one cannot repeat it', function (): void {
+    $install = install();
+    uploadModules($install, ORARIO);
+    confirmedDeveloper($install);
+    $stores = rootsStores($install);
+    $log = new Innesto\Roots\RootsLog(dataPath($install), $install['clock'], 'req');
+    $modules = new Innesto\Roots\Modules($install['roots'] . '/modules', $stores, new Innesto\Roots\FaultFence($stores->runtime, $log, $install['clock']), $log, $install['clock'], new Innesto\Roots\Locale\Catalogue(dirname(__DIR__, 2) . '/locales'), 'https://example.com');
+    $seen = $modules->all()['in.hours']['state'];
+
+    // Another request activates it meanwhile.
+    contentStore($install)->put('modules', ['id' => 'in.hours', 'state' => 'active']);
+    $refused = $modules->activate('in.hours', 'en');
+
+    expect($seen)->toBe('uploaded')
+        ->and($refused)->toBe(['dev.modules.error.state', []])
+        ->and(moduleStoreExists($install, 'in.hours'))->toBeFalse()
+        ->and(loggedEvents($install))->not->toContain('module.activated');
+});
